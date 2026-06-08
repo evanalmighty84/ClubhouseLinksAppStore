@@ -14,20 +14,28 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
-    DEVELOPMENT_TEAM: XXXXXXXXXX
+    DEVELOPMENT_TEAM: 395Q3284J6
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1"
+    ENABLE_BITCODE: NO
+    SWIFT_OPTIMIZATION_LEVEL: "-Onone"
 
 targets:
   ClubhouseResident:
     type: application
     platform: iOS
+
     sources:
       - path: ClubhouseResident/Sources
+        type: group
+
     resources:
       - path: ClubhouseResident/Assets.xcassets
+      - path: ClubhouseResident/Info.plist
+
     info:
       path: ClubhouseResident/Info.plist
+
     settings:
       base:
         INFOPLIST_FILE: ClubhouseResident/Info.plist
