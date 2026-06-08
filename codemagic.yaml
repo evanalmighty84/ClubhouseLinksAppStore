@@ -1,0 +1,20 @@
+workflows:
+  clubhouse-resident:
+    name: Clubhouse Resident App
+
+    environment:
+      xcode: latest
+
+    scripts:
+      - name: Generate Xcode project
+        script: |
+          xcodegen generate
+
+      - name: Build iOS app
+        script: |
+          xcodebuild \
+            -project ClubhouseResident.xcodeproj \
+            -scheme ClubhouseResident \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            build
