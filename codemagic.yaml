@@ -2,6 +2,9 @@ workflows:
   clubhouse-resident:
     name: Clubhouse Resident App
 
+    integrations:
+      app_store_connect: Codemagic
+
     environment:
       xcode: latest
       ios_signing:
