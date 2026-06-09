@@ -4,6 +4,9 @@ workflows:
 
     environment:
       xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.clubhouselinks.resident
 
     scripts:
       - name: Install XcodeGen
@@ -14,11 +17,19 @@ workflows:
         script: |
           xcodegen generate
 
-      - name: Build iOS app
+      - name: Set up code signing
         script: |
-          xcodebuild \
-            -project ClubhouseResident.xcodeproj \
-            -scheme ClubhouseResident \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
-            build
+          xcode-project use-profiles
+
+      - name: Build signed IPA
+        script: |
+          xcode-project build-ipa \
+            --project "ClubhouseResident.xcodeproj" \
+            --scheme "ClubhouseResident"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
