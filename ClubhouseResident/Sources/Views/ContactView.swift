@@ -11,7 +11,7 @@ struct ContactView: View {
                 NeonCard(title: "Need Help?",
                          text: "Contact your community team or submit a resident request.")
 
-                Link("Call Clubhouse Links", destination: URL(string: "tel:2145555555")!)
+                Link("Call Clubhouse Links", destination: URL(string: "tel:2145489175")!)
                     .font(.headline)
                     .foregroundStyle(.cyan)
 

@@ -3,24 +3,56 @@ import SwiftUI
 struct HomeView: View {
     var body: some View {
         NeonBackground {
-            VStack(alignment: .leading, spacing: 22) {
-                Text("Clubhouse Links")
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(.white)
+            ScrollView {
+                VStack(spacing: 24) {
 
-                Text("Resident Portal")
-                    .font(.title2.bold())
-                    .foregroundStyle(.cyan)
+                    Image("hoa")
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
+                        .shadow(color: .cyan.opacity(0.7), radius: 20)
 
-                NeonCard(title: "Community Updates",
-                         text: "View HOA events, neighborhood announcements, and resident resources.")
+                    VStack(spacing: 6) {
+                        Text("Clubhouse Links")
+                            .font(.largeTitle.bold())
+                            .foregroundStyle(.white)
 
-                NeonCard(title: "Submit Requests",
-                         text: "Send service, maintenance, or community requests directly from the app.")
+                        Text("Resident Portal")
+                            .font(.title2.bold())
+                            .foregroundStyle(.cyan)
 
-                Spacer()
+                        Text("Stay connected with your HOA community")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+
+                    NeonCard(
+                        title: "Community Updates",
+                        text: "View HOA events, announcements, board updates, and neighborhood news."
+                    )
+
+                    NeonCard(
+                        title: "Submit Requests",
+                        text: "Send maintenance requests, report issues, or contact management."
+                    )
+
+                    NeonCard(
+                        title: "Amenities",
+                        text: "Access clubhouse, pool, tennis court, and community information."
+                    )
+
+                    NeonCard(
+                        title: "View Vendors",
+                        text: "Browse trusted local contractors, home service providers, and HOA-approved businesses."
+                    )
+
+                    NeonCard(
+                        title: "Upcoming Events",
+                        text: "See social events, meetings, holiday celebrations, and HOA activities."
+                    )
+                }
+                .padding()
             }
-            .padding()
         }
     }
 }
