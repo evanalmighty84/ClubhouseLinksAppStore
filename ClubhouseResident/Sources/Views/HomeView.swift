@@ -25,6 +25,22 @@ struct HomeView: View {
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.7))
                     }
+                    NavigationLink {
+                        SignupView()
+                    } label: {
+                        Text("Create Resident Account")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            LinearGradient(colors: [.cyan, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing)
+                        )
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .shadow(color: .cyan.opacity(0.5), radius: 12)
+                    }
 
                     NeonCard(
                         title: "Community Updates",
@@ -32,13 +48,13 @@ struct HomeView: View {
                     )
 
                     NeonCard(
-                        title: "Submit Requests",
-                        text: "Send maintenance requests, report issues, or contact management."
+                        title: "Submit Vendor Requests",
+                        text: "Send maintenance requests , report issues, or contact management."
                     )
 
                     NeonCard(
-                        title: "Amenities",
-                        text: "Access clubhouse, pool, tennis court, and community information."
+                        title: "Book Amenities",
+                        text: "Contact your HOA to Access clubhouse, pool, tennis court, and community information."
                     )
 
                     NeonCard(
