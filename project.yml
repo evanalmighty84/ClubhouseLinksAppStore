@@ -19,6 +19,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     ENABLE_BITCODE: NO
     SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
 targets:
   ClubhouseResident:
@@ -26,11 +27,10 @@ targets:
     platform: iOS
 
     sources:
-      - path: ClubhouseResident/Sources
-        type: group
-
-    resources:
-      - path: ClubhouseResident/Assets.xcassets
+      - path: ClubhouseResident
+        excludes:
+          - Info.plist
+          - .idea
 
     info:
       path: ClubhouseResident/Info.plist
