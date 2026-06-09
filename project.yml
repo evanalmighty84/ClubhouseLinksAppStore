@@ -4,7 +4,6 @@ options:
   bundleIdPrefix: com.clubhouselinks
   deploymentTarget:
     iOS: "16.0"
-  xcodeVersion: "15.0"
   createIntermediateGroups: true
 
 settings:
@@ -16,9 +15,20 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     DEVELOPMENT_TEAM: 395Q3284J6
     CODE_SIGN_STYLE: Automatic
-    TARGETED_DEVICE_FAMILY: "1"
-    ENABLE_BITCODE: NO
-    SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    INFOPLIST_KEY_CFBundleIconName: AppIcon
+    INFOPLIST_KEY_UISupportedInterfaceOrientations:
+      - UIInterfaceOrientationPortrait
+      - UIInterfaceOrientationPortraitUpsideDown
+      - UIInterfaceOrientationLandscapeLeft
+      - UIInterfaceOrientationLandscapeRight
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad:
+      - UIInterfaceOrientationPortrait
+      - UIInterfaceOrientationPortraitUpsideDown
+      - UIInterfaceOrientationLandscapeLeft
+      - UIInterfaceOrientationLandscapeRight
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
 
 targets:
   ClubhouseResident:
@@ -27,11 +37,9 @@ targets:
 
     sources:
       - path: ClubhouseResident/Sources
-        type: group
 
     resources:
       - path: ClubhouseResident/Assets.xcassets
-      - path: ClubhouseResident/Info.plist
 
     info:
       path: ClubhouseResident/Info.plist
@@ -39,4 +47,3 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: ClubhouseResident/Info.plist
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
