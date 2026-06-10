@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HomeView: View {
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
+    @AppStorage("residentId") private var residentId = 0
+    @AppStorage("residentFirstName") private var firstName = ""
 
     var body: some View {
         if residentIsSignedUp {
@@ -34,6 +36,21 @@ struct HomeView: View {
                         Text("Stay connected with your HOA community")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.7))
+                    }
+
+                    if residentId > 0 {
+                        Button {
+                            residentIsSignedUp = true
+                        } label: {
+                            Text(firstName.isEmpty ? "Resident Sign In" : "Sign In as \(firstName)")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.white.opacity(0.14))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
+                            .shadow(color: .cyan.opacity(0.25), radius: 10)
+                        }
                     }
 
                     NavigationLink {

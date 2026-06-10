@@ -36,19 +36,38 @@ struct ResidentProfileView: View {
                     .background(.white.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 22))
 
+                    NavigationLink {
+                        VendorDirectoryView()
+                    } label: {
+                        Text("View Vendor Directory")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            LinearGradient(
+                                colors: [.cyan, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: .cyan.opacity(0.45), radius: 12)
+                    }
+
                     NeonCard(
                         title: "Community Updates",
                         text: "View announcements, HOA updates, and neighborhood news for your community."
                     )
 
                     NeonCard(
-                        title: "Vendor Directory",
-                        text: "Browse trusted local vendors connected to your neighborhood."
+                        title: "Events",
+                        text: "See upcoming meetings, block parties, and neighborhood events."
                     )
 
                     NeonCard(
-                        title: "Events",
-                        text: "See upcoming meetings, block parties, and neighborhood events."
+                        title: "Submit Vendor Request",
+                        text: "Request a contractor, service provider, or local business recommendation."
                     )
 
                     Button {
