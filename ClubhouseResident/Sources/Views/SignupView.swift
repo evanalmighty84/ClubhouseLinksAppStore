@@ -8,6 +8,8 @@ struct SignupView: View {
     @AppStorage("residentPhone") private var savedPhone = ""
     @AppStorage("residentAddress") private var savedAddress = ""
     @AppStorage("residentApprovalStatus") private var residentApprovalStatus = ""
+    @AppStorage("residentNeighborhoodId") private var residentNeighborhoodId = 0
+    @AppStorage("residentNeighborhoodName") private var residentNeighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
 
     @State private var firstName = ""
@@ -138,6 +140,8 @@ struct SignupView: View {
                         savedPhone = decoded.resident.phone
                         savedAddress = address
                         residentApprovalStatus = decoded.resident.approval_status
+                        residentNeighborhoodId = decoded.resident.neighborhood_id
+                        residentNeighborhoodName = decoded.resident.neighborhood_name ?? "Country Place"
                         residentIsSignedUp = true
                     } else {
                         errorMessage = decoded.error ?? "Signup failed."
@@ -165,6 +169,7 @@ struct ResidentAccount: Codable {
     let last_name: String
     let phone: String
     let neighborhood_id: Int
+    let neighborhood_name: String?
     let approval_status: String
     let sms_verified: Bool
 }

@@ -1,30 +1,41 @@
 import SwiftUI
 
 struct HomeView: View {
+    @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
+
     var body: some View {
+        if residentIsSignedUp {
+            ResidentProfileView()
+        } else {
+            homeContent
+        }
+    }
+
+    private var homeContent: some View {
         NeonBackground {
             ScrollView {
                 VStack(spacing: 24) {
 
                     Image("hoa")
-                        .resizable()
-                        .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: 24))
-                        .shadow(color: .cyan.opacity(0.7), radius: 20)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                    .shadow(color: .cyan.opacity(0.7), radius: 20)
 
                     VStack(spacing: 6) {
                         Text("Clubhouse Links")
-                            .font(.largeTitle.bold())
-                            .foregroundStyle(.white)
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(.white)
 
                         Text("Resident Portal")
-                            .font(.title2.bold())
-                            .foregroundStyle(.cyan)
+                        .font(.title2.bold())
+                        .foregroundStyle(.cyan)
 
                         Text("Stay connected with your HOA community")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.7))
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
                     }
+
                     NavigationLink {
                         SignupView()
                     } label: {
@@ -49,12 +60,12 @@ struct HomeView: View {
 
                     NeonCard(
                         title: "Submit Vendor Requests",
-                        text: "Send maintenance requests , report issues, or contact management."
+                        text: "Send maintenance requests, report issues, or contact management."
                     )
 
                     NeonCard(
                         title: "Book Amenities",
-                        text: "Contact your HOA to Access clubhouse, pool, tennis court, and community information."
+                        text: "Contact your HOA to access clubhouse, pool, tennis court, and community information."
                     )
 
                     NeonCard(
