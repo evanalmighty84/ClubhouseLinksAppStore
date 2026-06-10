@@ -2,10 +2,12 @@ import SwiftUI
 import AuthenticationServices
 
 struct SignupView: View {
+    @AppStorage("residentId") private var residentId = 0
     @AppStorage("residentFirstName") private var savedFirstName = ""
     @AppStorage("residentLastName") private var savedLastName = ""
     @AppStorage("residentPhone") private var savedPhone = ""
     @AppStorage("residentAddress") private var savedAddress = ""
+    @AppStorage("residentApprovalStatus") private var residentApprovalStatus = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
 
     @State private var firstName = ""
@@ -14,9 +16,9 @@ struct SignupView: View {
     @State private var address = ""
     @State private var neighborhoodCode = ""
     @State private var errorMessage = ""
+    @State private var isLoading = false
 
-    private let validNeighborhoodCode = "COUNTRYPLACE2026"
-
+    private let signupURL = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/signup"
     var body: some View {
         NeonBackground {
             ScrollView {
@@ -43,7 +45,7 @@ struct SignupView: View {
                     Button {
                         submitSignup()
                     } label: {
-                        Text("Create Resident Profile")
+                        Text(isLoading ? "Creating..." : "Create Resident Profile")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -55,6 +57,7 @@ struct SignupView: View {
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
+                    .disabled(isLoading)
 
                     SignInWithAppleButton(.signUp) { request in
                         request.requestedScopes = [.fullName, .email]
@@ -85,22 +88,83 @@ struct SignupView: View {
         guard !firstName.isEmpty,
         !lastName.isEmpty,
         !phone.isEmpty,
-        !address.isEmpty else {
+        !address.isEmpty,
+        !neighborhoodCode.isEmpty else {
             errorMessage = "Please complete all fields."
             return
         }
 
-        guard neighborhoodCode.uppercased().trimmingCharacters(in: .whitespacesAndNewlines) == validNeighborhoodCode else {
-            errorMessage = "Invalid neighborhood code."
+        guard let url = URL(string: signupURL) else {
+            errorMessage = "Invalid server URL."
             return
         }
 
-        savedFirstName = firstName
-        savedLastName = lastName
-        savedPhone = phone
-        savedAddress = address
-        residentIsSignedUp = true
+        isLoading = true
 
-        print("Resident profile created")
+        let payload: [String: String] = [
+            "first_name": firstName,
+            "last_name": lastName,
+            "phone": phone,
+            "address": address,
+            "invite_code": neighborhoodCode.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        ]
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isLoading = false
+
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    return
+                }
+
+                guard let data = data else {
+                    errorMessage = "No response from server."
+                    return
+                }
+
+                do {
+                    let decoded = try JSONDecoder().decode(SignupResponse.self, from: data)
+
+                    if decoded.success {
+                        residentId = decoded.resident_id
+                        savedFirstName = decoded.resident.first_name
+                        savedLastName = decoded.resident.last_name
+                        savedPhone = decoded.resident.phone
+                        savedAddress = address
+                        residentApprovalStatus = decoded.resident.approval_status
+                        residentIsSignedUp = true
+                    } else {
+                        errorMessage = decoded.error ?? "Signup failed."
+                    }
+                } catch {
+                    errorMessage = "Could not read server response."
+                    print(String(data: data, encoding: .utf8) ?? "")
+                }
+            }
+        }.resume()
     }
+}
+
+struct SignupResponse: Codable {
+    let success: Bool
+    let resident_id: Int
+    let resident: ResidentAccount
+    let message: String?
+    let error: String?
+}
+
+struct ResidentAccount: Codable {
+    let id: Int
+    let first_name: String
+    let last_name: String
+    let phone: String
+    let neighborhood_id: Int
+    let approval_status: String
+    let sms_verified: Bool
 }
