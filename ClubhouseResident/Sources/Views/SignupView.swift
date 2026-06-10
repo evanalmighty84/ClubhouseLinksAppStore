@@ -32,11 +32,45 @@ struct SignupView: View {
                     Text("Enter your resident details and the neighborhood access code shared with your community.")
                     .foregroundStyle(.white.opacity(0.75))
 
-                    NeonTextField("First Name", text: $firstName)
-                    NeonTextField("Last Name", text: $lastName)
-                    NeonTextField("Phone", text: $phone)
-                    NeonTextField("Address or Unit", text: $address)
-                    NeonTextField("Neighborhood Code", text: $neighborhoodCode)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("First Name")
+                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.headline)
+
+                        NeonTextField("Enter First Name", text: $firstName)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Last Name")
+                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.headline)
+
+                        NeonTextField("Enter Last Name", text: $lastName)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Phone Number")
+                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.headline)
+
+                        NeonTextField("Enter Phone Number", text: $phone)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Address")
+                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.headline)
+
+                        NeonTextField("Enter Address", text: $address)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Neighborhood Code")
+                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.headline)
+
+                        NeonTextField("Enter Neighborhood Code", text: $neighborhoodCode)
+                    }
 
                     if !errorMessage.isEmpty {
                         Text(errorMessage)
@@ -47,14 +81,16 @@ struct SignupView: View {
                     Button {
                         submitSignup()
                     } label: {
-                        Text(isLoading ? "Creating..." : "Create Resident Profile")
+                        Text(isLoading ? "Creating..." : "Create Account")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(
-                            LinearGradient(colors: [.cyan, .purple],
+                            LinearGradient(
+                                colors: [.cyan, .purple],
                                 startPoint: .leading,
-                                endPoint: .trailing)
+                                endPoint: .trailing
+                            )
                         )
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 16))

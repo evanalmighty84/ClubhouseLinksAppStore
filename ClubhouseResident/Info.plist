@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="6.0">
+<plist version="7.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+
     <key>CFBundleDisplayName</key>
     <string>Clubhouse Links</string>
     <key>CFBundleExecutable</key>
@@ -54,6 +55,8 @@
         <key>UIApplicationSupportsMultipleScenes</key>
         <false/>
     </dict>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 
     <key>NSAppTransportSecurity</key>
     <dict>
