@@ -22,13 +22,14 @@ workflows:
 
       - name: Set up code signing
         script: |
-          xcode-project use-profiles
+          xcode-project use-profiles --warn-only
 
       - name: Build signed IPA
         script: |
           xcode-project build-ipa \
             --project "ClubhouseResident.xcodeproj" \
-            --scheme "ClubhouseResident"
+            --scheme "ClubhouseResident" \
+            --archive-xcargs "-allowProvisioningUpdates"
 
     artifacts:
       - build/ios/ipa/*.ipa
