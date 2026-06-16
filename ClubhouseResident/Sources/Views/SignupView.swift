@@ -21,6 +21,7 @@ struct SignupView: View {
     @State private var isLoading = false
 
     private let signupURL = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/signup"
+
     var body: some View {
         NeonBackground {
             ScrollView {
@@ -74,7 +75,7 @@ struct SignupView: View {
 
                     if !errorMessage.isEmpty {
                         Text(errorMessage)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(errorMessage.contains("successful") ? .green : .red)
                         .font(.subheadline)
                     }
 
@@ -102,9 +103,14 @@ struct SignupView: View {
                     } onCompletion: { result in
                         switch result {
                         case .success(let authResults):
-                            print("Apple signup success: \(authResults)")
+                            handleAppleSignInSuccess(authResults)
+
                         case .failure(let error):
-                            errorMessage = error.localizedDescription
+                            if let authError = error as? ASAuthorizationError {
+                                errorMessage = "Apple Sign In failed. Code: \(authError.code.rawValue)"
+                            } else {
+                                errorMessage = error.localizedDescription
+                            }
                         }
                     }
                     .signInWithAppleButtonStyle(.white)
@@ -118,6 +124,28 @@ struct SignupView: View {
         }
         .navigationTitle("Sign Up")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func handleAppleSignInSuccess(_ authResults: ASAuthorization) {
+        errorMessage = ""
+
+        guard let credential = authResults.credential as? ASAuthorizationAppleIDCredential else {
+            errorMessage = "Could not read Apple sign in information."
+            return
+        }
+
+        let givenName = credential.fullName?.givenName ?? ""
+        let familyName = credential.fullName?.familyName ?? ""
+
+        if !givenName.isEmpty {
+            firstName = givenName
+        }
+
+        if !familyName.isEmpty {
+            lastName = familyName
+        }
+
+        errorMessage = "Apple Sign In successful. Please enter your phone number, address, and neighborhood code to finish creating your resident account."
     }
 
     private func submitSignup() {
