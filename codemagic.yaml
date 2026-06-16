@@ -29,7 +29,9 @@ workflows:
           xcode-project build-ipa \
             --project "ClubhouseResident.xcodeproj" \
             --scheme "ClubhouseResident" \
-          --archive-flags="-allowProvisioningUpdates"
+            --archive-flags="-allowProvisioningUpdates" \
+            --disable-xcpretty \
+            --log-stream stdout
 
     artifacts:
       - build/ios/ipa/*.ipa
