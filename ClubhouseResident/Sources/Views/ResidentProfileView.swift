@@ -29,16 +29,22 @@ struct ResidentProfileView: View {
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
 
     @State private var isProfileFlipped = false
+
     @State private var selectedService = "Painting"
+    @State private var selectedVendorId = 0
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var uploadMessage = ""
+
+    @State private var vendorOptions: [Vendor] = []
+    @State private var vendorOptionsLoading = false
+    @State private var vendorOptionsError = ""
 
     @State private var completedProjects: [ResidentCompletedProject] = []
     @State private var completedProjectsLoading = false
     @State private var completedProjectsError = ""
 
-    private let serviceOptions = [
+    private let fallbackServiceOptions = [
         "Painting",
         "Pool Service",
         "Roofing",
@@ -48,6 +54,15 @@ struct ResidentProfileView: View {
         "Landscaping",
         "General Contractor"
     ]
+
+    private var serviceOptions: [String] {
+        let vendorCategories = vendorOptions
+        .compactMap { $0.category?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+
+        let combined = vendorCategories + fallbackServiceOptions
+        return Array(Set(combined)).sorted()
+    }
 
     var body: some View {
         NeonBackground {
@@ -60,6 +75,22 @@ struct ResidentProfileView: View {
                     .padding(.top, 12)
 
                     flippableProfileCard
+
+                    Text("Swipe your profile card to see completed projects. Tap your profile card to submit a new one.")
+                    .font(.headline.bold())
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color.yellow,
+                                Color.orange,
+                                Color.yellow.opacity(0.9)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
 
                     NavigationLink {
                         VendorDirectoryView()
@@ -79,24 +110,6 @@ struct ResidentProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                         .shadow(color: .cyan.opacity(0.5), radius: 12)
                     }
-
-                    Text("Swipe to see your completed projects. Tap your profile card to submit a new one.")
-                    .font(.headline.bold())
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color.yellow,
-                                Color.orange,
-                                Color.yellow.opacity(0.9)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-
-                    completedProjectsCard
 
                     NeonCard(
                         title: "Community Updates",
@@ -133,9 +146,13 @@ struct ResidentProfileView: View {
         }
         .onAppear {
             loadCompletedProjects()
+            loadVendorOptions()
         }
         .onChange(of: selectedPhotoItem) { newItem in
             loadSelectedPhoto(from: newItem)
+        }
+        .onChange(of: selectedVendorId) { _ in
+            syncServiceToSelectedVendor()
         }
     }
 
@@ -165,6 +182,114 @@ struct ResidentProfileView: View {
 
     private var profileCardFront: some View {
         VStack(spacing: 10) {
+            if completedProjectsLoading {
+                profileInfoOnlySlide
+                .overlay(
+                    ProgressView()
+                    .tint(.cyan)
+                    .padding(.top, 150)
+                )
+            } else {
+                TabView {
+                    profileInfoOnlySlide
+
+                    ForEach(completedProjects) { project in
+                        profileProjectSlide(project)
+                    }
+                }
+                .frame(height: completedProjects.isEmpty ? 210 : 330)
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: completedProjects.isEmpty ? .never : .automatic))
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: .cyan.opacity(0.25), radius: 10)
+    }
+
+    private var profileInfoOnlySlide: some View {
+        VStack(spacing: 10) {
+            residentInfoHeader
+
+            if !completedProjectsError.isEmpty {
+                Text(completedProjectsError)
+                .font(.caption)
+                .foregroundStyle(.red.opacity(0.9))
+                .multilineTextAlignment(.center)
+                .padding(.top, 4)
+            } else if completedProjects.isEmpty && !completedProjectsLoading {
+                Text("No completed projects submitted yet.")
+                .font(.caption.bold())
+                .foregroundStyle(.white.opacity(0.65))
+                .padding(.top, 4)
+            }
+
+            Text("Tap to submit a completed project")
+            .font(.caption.bold())
+            .foregroundStyle(.cyan.opacity(0.9))
+            .padding(.top, 6)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func profileProjectSlide(_ project: ResidentCompletedProject) -> some View {
+        VStack(spacing: 12) {
+            residentInfoHeader
+
+            HStack(alignment: .center, spacing: 12) {
+                AsyncImage(url: URL(string: project.image_url ?? "")) { image in
+                    image
+                    .resizable()
+                    .scaledToFill()
+                } placeholder: {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16)
+                        .fill(.black.opacity(0.25))
+
+                        ProgressView()
+                        .tint(.cyan)
+                    }
+                }
+                .frame(width: 110, height: 88)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(project.vendor_name ?? "Vendor")
+                    .font(.headline.bold())
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                    Text(project.service ?? "Service")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.cyan)
+                    .lineLimit(1)
+
+                    approvalBadge(project.approval_status ?? "pending_review")
+
+                    if let reason = project.photo_rejection_reason, !reason.isEmpty {
+                        Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(.red.opacity(0.9))
+                        .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding()
+            .background(.black.opacity(0.20))
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+
+            Text("Tap profile card to submit another project")
+            .font(.caption.bold())
+            .foregroundStyle(.cyan.opacity(0.9))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var residentInfoHeader: some View {
+        VStack(spacing: 8) {
             Text("\(firstName) \(lastName)")
             .font(.title.bold())
             .foregroundStyle(.white)
@@ -179,17 +304,7 @@ struct ResidentProfileView: View {
             Text(address)
             .foregroundStyle(.white.opacity(0.75))
             .multilineTextAlignment(.center)
-
-            Text("Tap to submit a completed project")
-            .font(.caption.bold())
-            .foregroundStyle(.cyan.opacity(0.9))
-            .padding(.top, 6)
         }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 22))
-        .shadow(color: .cyan.opacity(0.25), radius: 10)
     }
 
     private var profileCardBack: some View {
@@ -216,7 +331,7 @@ struct ResidentProfileView: View {
                 }
             }
 
-            Text("Select the service and upload a finished project photo. Photos are reviewed before they appear publicly.")
+            Text("Select the service, choose the vendor, and upload a finished project photo. Photos are reviewed before they appear publicly.")
             .font(.subheadline)
             .foregroundStyle(.white.opacity(0.7))
 
@@ -236,6 +351,41 @@ struct ResidentProfileView: View {
                 .background(.black.opacity(0.25))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .tint(.cyan)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Vendor")
+                .font(.caption.bold())
+                .foregroundStyle(.cyan)
+
+                if vendorOptionsLoading {
+                    ProgressView()
+                    .tint(.cyan)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(.black.opacity(0.25))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                } else {
+                    Picker("Vendor", selection: $selectedVendorId) {
+                        Text("Select Vendor").tag(0)
+
+                        ForEach(filteredVendorOptions) { vendor in
+                            Text(vendor.company_name).tag(vendor.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.black.opacity(0.25))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .tint(.cyan)
+                }
+
+                if !vendorOptionsError.isEmpty {
+                    Text(vendorOptionsError)
+                    .font(.caption)
+                    .foregroundStyle(.red.opacity(0.9))
+                }
             }
 
             PhotosPicker(
@@ -281,11 +431,11 @@ struct ResidentProfileView: View {
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(selectedImage == nil ? .white.opacity(0.12) : .white.opacity(0.18))
-                .foregroundStyle(selectedImage == nil ? .white.opacity(0.45) : .white)
+                .background((selectedImage == nil || selectedVendorId == 0) ? .white.opacity(0.12) : .white.opacity(0.18))
+                .foregroundStyle((selectedImage == nil || selectedVendorId == 0) ? .white.opacity(0.45) : .white)
                 .clipShape(RoundedRectangle(cornerRadius: 18))
             }
-            .disabled(selectedImage == nil)
+            .disabled(selectedImage == nil || selectedVendorId == 0)
 
             if !uploadMessage.isEmpty {
                 Text(uploadMessage)
@@ -335,120 +485,14 @@ struct ResidentProfileView: View {
         .shadow(color: .cyan.opacity(0.25), radius: 12)
     }
 
-    private var completedProjectsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-
-            HStack {
-                Text("Completed Projects")
-                .font(.title3.bold())
-                .foregroundStyle(.white)
-
-                Spacer()
-
-                Image(systemName: "arrow.left.arrow.right")
-                .foregroundStyle(.cyan)
+    private var filteredVendorOptions: [Vendor] {
+        vendorOptions.filter { vendor in
+            guard !selectedService.isEmpty else {
+                return true
             }
 
-            if completedProjectsLoading {
-                ProgressView()
-                .tint(.cyan)
-                .frame(maxWidth: .infinity)
-                .padding()
-            } else if !completedProjectsError.isEmpty {
-                Text(completedProjectsError)
-                .font(.subheadline)
-                .foregroundStyle(.red)
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(.black.opacity(0.22))
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-            } else if completedProjects.isEmpty {
-                VStack(spacing: 10) {
-                    Image(systemName: "photo.on.rectangle.angled")
-                    .font(.system(size: 38))
-                    .foregroundStyle(.cyan)
-
-                    Text("No completed projects submitted yet.")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                    Text("Tap your profile card above to submit your first project.")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.65))
-                    .multilineTextAlignment(.center)
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(.black.opacity(0.22))
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-            } else {
-                TabView {
-                    ForEach(completedProjects) { project in
-                        completedProjectSlide(project)
-                    }
-                }
-                .frame(height: 285)
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-            }
+            return (vendor.category ?? "") == selectedService
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .purple.opacity(0.35), radius: 12)
-    }
-
-    private func completedProjectSlide(_ project: ResidentCompletedProject) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-
-            AsyncImage(url: URL(string: project.image_url ?? "")) { image in
-                image
-                .resizable()
-                .scaledToFill()
-            } placeholder: {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18)
-                    .fill(.black.opacity(0.25))
-
-                    ProgressView()
-                    .tint(.cyan)
-                }
-            }
-            .frame(height: 170)
-            .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-
-            HStack(spacing: 12) {
-                Image(systemName: "mappin.circle.fill")
-                .foregroundStyle(.cyan)
-                .font(.system(size: 30))
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(project.vendor_name ?? "Vendor")
-                    .font(.headline.bold())
-                    .foregroundStyle(.white)
-
-                    Text(project.service ?? "Service")
-                    .font(.subheadline)
-                    .foregroundStyle(.cyan)
-                }
-
-                Spacer()
-
-                approvalBadge(project.approval_status ?? "pending_review")
-            }
-
-            if let reason = project.photo_rejection_reason, !reason.isEmpty {
-                Text(reason)
-                .font(.caption)
-                .foregroundStyle(.red.opacity(0.9))
-                .lineLimit(2)
-            }
-        }
-        .padding()
-        .background(.black.opacity(0.22))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .padding(.horizontal, 4)
     }
 
     private func approvalBadge(_ status: String) -> some View {
@@ -538,6 +582,81 @@ struct ResidentProfileView: View {
         }.resume()
     }
 
+    private func loadVendorOptions() {
+        guard residentId > 0 else {
+            vendorOptionsError = "Resident profile not found."
+            return
+        }
+
+        vendorOptionsLoading = true
+        vendorOptionsError = ""
+
+        let urlString = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/vendors/\(residentId)"
+
+        guard let url = URL(string: urlString) else {
+            vendorOptionsLoading = false
+            vendorOptionsError = "Invalid vendor URL."
+            return
+        }
+
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            DispatchQueue.main.async {
+                vendorOptionsLoading = false
+            }
+
+            if let error = error {
+                DispatchQueue.main.async {
+                    vendorOptionsError = error.localizedDescription
+                }
+                return
+            }
+
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    vendorOptionsError = "No vendors found."
+                }
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(VendorResponse.self, from: data)
+
+                DispatchQueue.main.async {
+                    if decoded.success == true {
+                        vendorOptions = decoded.vendors ?? []
+
+                        if selectedVendorId == 0, let firstVendor = vendorOptions.first {
+                            selectedVendorId = firstVendor.id
+                            selectedService = firstVendor.category ?? selectedService
+                        }
+                    } else {
+                        vendorOptionsError = decoded.error ?? "Could not load vendors."
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    vendorOptionsError = String(data: data, encoding: .utf8) ?? "Could not decode vendors."
+                }
+                print(error)
+                print(String(data: data, encoding: .utf8) ?? "")
+            }
+        }.resume()
+    }
+
+    private func syncServiceToSelectedVendor() {
+        guard let vendor = selectedVendor() else {
+            return
+        }
+
+        if let category = vendor.category, !category.isEmpty {
+            selectedService = category
+        }
+    }
+
+    private func selectedVendor() -> Vendor? {
+        vendorOptions.first { $0.id == selectedVendorId }
+    }
+
     private func loadSelectedPhoto(from item: PhotosPickerItem?) {
         guard let item else { return }
 
@@ -559,11 +678,18 @@ struct ResidentProfileView: View {
     }
 
     private func submitSelectedProject() {
+        guard selectedVendorId > 0 else {
+            uploadMessage = "Please select a vendor."
+            return
+        }
+
         guard selectedImage != nil else {
             uploadMessage = "Please select a finished project photo first."
             return
         }
 
-        uploadMessage = "Photo selected for \(selectedService). Backend upload is the next step."
+        let vendorName = selectedVendor()?.company_name ?? "selected vendor"
+
+        uploadMessage = "Photo selected for \(vendorName). Backend upload is the next step."
     }
 }
