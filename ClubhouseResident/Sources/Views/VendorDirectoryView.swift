@@ -1,15 +1,31 @@
 import SwiftUI
 
+struct VendorResponse: Codable {
+    let success: Bool?
+    let vendors: [Vendor]?
+    let error: String?
+}
+
 struct Vendor: Codable, Identifiable {
     let id: Int
+    let neighborhood_id: Int?
     let company_name: String
-    let category: String
+    let category: String?
     let contact_name: String?
     let phone: String?
     let email: String?
     let website: String?
     let description: String?
     let logo_url: String?
+    let active: Bool?
+    let signup_count: Int?
+    let signed_up_people: [VendorSignupPerson]?
+}
+
+struct VendorSignupPerson: Codable, Identifiable {
+    let id: Int
+    let first_name: String?
+    let address: String?
 }
 
 struct VendorDirectoryView: View {
@@ -118,14 +134,19 @@ struct VendorDirectoryView: View {
             }
 
             do {
-                let decoded = try JSONDecoder().decode([Vendor].self, from: data)
+                let decoded = try JSONDecoder().decode(VendorResponse.self, from: data)
 
                 DispatchQueue.main.async {
-                    vendors = decoded
+                    if decoded.success == true {
+                        vendors = decoded.vendors ?? []
+                    } else {
+                        errorMessage = decoded.error ?? "Could not load vendors."
+                    }
                 }
             } catch {
                 DispatchQueue.main.async {
-                    errorMessage = "Could not load vendors."
+                    let rawResponse = String(data: data, encoding: .utf8) ?? "Unreadable response"
+                    errorMessage = rawResponse
                 }
                 print(error)
                 print(String(data: data, encoding: .utf8) ?? "")
