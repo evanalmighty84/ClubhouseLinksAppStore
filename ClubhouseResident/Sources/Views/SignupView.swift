@@ -197,7 +197,7 @@ struct SignupView: View {
                 do {
                     let decoded = try JSONDecoder().decode(SignupResponse.self, from: data)
 
-                    if decoded.success, let resident = decoded.resident, let newResidentId = decoded.resident_id {
+                    if decoded.success == true, let resident = decoded.resident, let newResidentId = decoded.resident_id {
                         residentId = newResidentId
                         savedFirstName = resident.first_name
                         savedLastName = resident.last_name
@@ -210,11 +210,11 @@ struct SignupView: View {
                     } else {
                         errorMessage = decoded.error ?? "Signup failed."
                     }
-                }  catch {
-let rawResponse = String(data: data, encoding: .utf8) ?? "Unreadable response"
-errorMessage = rawResponse
-print(rawResponse)
-}
+                } catch {
+                    let rawResponse = String(data: data, encoding: .utf8) ?? "Unreadable response"
+                    errorMessage = rawResponse
+                    print(rawResponse)
+                }
             }
         }.resume()
     }
