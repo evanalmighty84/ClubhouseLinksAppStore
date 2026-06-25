@@ -1,31 +1,529 @@
 import SwiftUI
+import PhotosUI
+
+struct CompletedProjectsResponse: Codable {
+    let success: Bool?
+    let projects: [ResidentCompletedProject]?
+    let error: String?
+}
+
+struct ResidentCompletedProject: Codable, Identifiable {
+    let id: Int
+    let resident_id: Int?
+    let vendor_id: Int?
+    let vendor_name: String?
+    let service: String?
+    let image_url: String?
+    let approval_status: String?
+    let moderation_status: String?
+    let photo_rejection_reason: String?
+}
 
 struct ProfileView: View {
+    @AppStorage("residentId") private var residentId = 0
     @AppStorage("residentFirstName") private var firstName = ""
     @AppStorage("residentLastName") private var lastName = ""
     @AppStorage("residentPhone") private var phone = ""
     @AppStorage("residentAddress") private var address = ""
+    @AppStorage("residentNeighborhoodName") private var neighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
+
+    @State private var isProfileFlipped = false
+    @State private var selectedService = "Painting"
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
+    @State private var uploadMessage = ""
+
+    @State private var completedProjects: [ResidentCompletedProject] = []
+    @State private var completedProjectsLoading = false
+    @State private var completedProjectsError = ""
+
+    private let serviceOptions = [
+        "Painting",
+        "Pool Service",
+        "Roofing",
+        "Realtor",
+        "Plumbing",
+        "Electrical",
+        "Landscaping",
+        "General Contractor"
+    ]
 
     var body: some View {
         NeonBackground {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Resident Profile")
-                .font(.largeTitle.bold())
+            ScrollView {
+                VStack(spacing: 24) {
+
+                    Text("Resident Profile")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(.white)
+                    .padding(.top, 12)
+
+                    flippableProfileCard
+
+                    Text("Swipe to see your completed projects. Tap your profile card to submit a new one.")
+                    .font(.headline.bold())
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color.yellow,
+                                Color.orange,
+                                Color.yellow.opacity(0.9)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                    completedProjectsCard
+
+                    Button("Sign Out") {
+                        residentIsSignedUp = false
+                    }
+                    .font(.headline)
+                    .foregroundStyle(.red)
+                    .padding(.top, 8)
+
+                    Spacer(minLength: 90)
+                }
+                .padding()
+            }
+        }
+        .onAppear {
+            loadCompletedProjects()
+        }
+        .onChange(of: selectedPhotoItem) { newItem in
+            loadSelectedPhoto(from: newItem)
+        }
+    }
+
+    private var flippableProfileCard: some View {
+        ZStack {
+            profileCardFront
+            .opacity(isProfileFlipped ? 0 : 1)
+            .rotation3DEffect(
+                .degrees(isProfileFlipped ? 180 : 0),
+                axis: (x: 0, y: 1, z: 0)
+            )
+            .onTapGesture {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                    isProfileFlipped = true
+                }
+            }
+
+            profileCardBack
+            .opacity(isProfileFlipped ? 1 : 0)
+            .rotation3DEffect(
+                .degrees(isProfileFlipped ? 0 : -180),
+                axis: (x: 0, y: 1, z: 0)
+            )
+        }
+        .animation(.spring(response: 0.55, dampingFraction: 0.78), value: isProfileFlipped)
+    }
+
+    private var profileCardFront: some View {
+        VStack(spacing: 10) {
+            Text("\(firstName) \(lastName)")
+            .font(.title.bold())
+            .foregroundStyle(.white)
+
+            Text(neighborhoodName.isEmpty ? "Country Place" : neighborhoodName)
+            .font(.headline)
+            .foregroundStyle(.cyan)
+
+            Text(phone)
+            .foregroundStyle(.white.opacity(0.75))
+
+            Text(address)
+            .foregroundStyle(.white.opacity(0.75))
+            .multilineTextAlignment(.center)
+
+            Text("Tap to submit a completed project")
+            .font(.caption.bold())
+            .foregroundStyle(.cyan.opacity(0.9))
+            .padding(.top, 6)
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: .cyan.opacity(0.25), radius: 10)
+    }
+
+    private var profileCardBack: some View {
+        VStack(alignment: .leading, spacing: 18) {
+
+            HStack {
+                Text("Submit New Project")
+                .font(.title3.bold())
                 .foregroundStyle(.white)
 
-                NeonCard(title: "Name", text: "\(firstName) \(lastName)")
-                NeonCard(title: "Phone", text: phone)
-                NeonCard(title: "Address", text: address)
+                Spacer()
 
-                Button("Sign Out") {
-                    residentIsSignedUp = false
+                Button {
+                    withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                        isProfileFlipped = false
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.uturn.left.circle.fill")
+                        Text("Back")
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.cyan)
                 }
-                .foregroundStyle(.red)
+            }
+
+            Text("Select the service and upload a finished project photo. Photos are reviewed before they appear publicly.")
+            .font(.subheadline)
+            .foregroundStyle(.white.opacity(0.7))
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Service")
+                .font(.caption.bold())
+                .foregroundStyle(.cyan)
+
+                Picker("Service", selection: $selectedService) {
+                    ForEach(serviceOptions, id: \.self) { service in
+                        Text(service).tag(service)
+                    }
+                }
+                .pickerStyle(.menu)
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.black.opacity(0.25))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .tint(.cyan)
+            }
+
+            PhotosPicker(
+                selection: $selectedPhotoItem,
+                matching: .images,
+                photoLibrary: .shared()
+            ) {
+                HStack(spacing: 10) {
+                    Image(systemName: "photo.badge.plus")
+                    .font(.title2)
+
+                    Text(selectedImage == nil ? "Upload Finished Photo" : "Change Photo")
+                    .font(.headline)
+
+                    Spacer()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(
+                    LinearGradient(
+                        colors: [.cyan, .purple],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+            }
+
+            if let selectedImage {
+                Image(uiImage: selectedImage)
+                .resizable()
+                .scaledToFill()
+                .frame(height: 160)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+            }
+
+            Button {
+                submitSelectedProject()
+            } label: {
+                Text("Submit for Review")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(selectedImage == nil ? .white.opacity(0.12) : .white.opacity(0.18))
+                .foregroundStyle(selectedImage == nil ? .white.opacity(0.45) : .white)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+            }
+            .disabled(selectedImage == nil)
+
+            if !uploadMessage.isEmpty {
+                Text(uploadMessage)
+                .font(.caption)
+                .foregroundStyle(.cyan)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+            }
+
+            Button {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                    isProfileFlipped = false
+                }
+            } label: {
+                Text("Back to Profile")
+                .font(.caption.bold())
+                .foregroundStyle(.cyan.opacity(0.95))
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.top, 2)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [
+                    .black.opacity(0.32),
+                    .purple.opacity(0.30),
+                    .cyan.opacity(0.12)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+            .stroke(
+                LinearGradient(
+                    colors: [.cyan, .purple],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1.5
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: .cyan.opacity(0.25), radius: 12)
+    }
+
+    private var completedProjectsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+
+            HStack {
+                Text("Completed Projects")
+                .font(.title3.bold())
+                .foregroundStyle(.white)
 
                 Spacer()
+
+                Image(systemName: "arrow.left.arrow.right")
+                .foregroundStyle(.cyan)
             }
-            .padding()
+
+            if completedProjectsLoading {
+                ProgressView()
+                .tint(.cyan)
+                .frame(maxWidth: .infinity)
+                .padding()
+            } else if !completedProjectsError.isEmpty {
+                Text(completedProjectsError)
+                .font(.subheadline)
+                .foregroundStyle(.red)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(.black.opacity(0.22))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+            } else if completedProjects.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                    .font(.system(size: 38))
+                    .foregroundStyle(.cyan)
+
+                    Text("No completed projects submitted yet.")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                    Text("Tap your profile card above to submit your first project.")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.65))
+                    .multilineTextAlignment(.center)
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(.black.opacity(0.22))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+            } else {
+                TabView {
+                    ForEach(completedProjects) { project in
+                        completedProjectSlide(project)
+                    }
+                }
+                .frame(height: 285)
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+            }
         }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: .purple.opacity(0.35), radius: 12)
+    }
+
+    private func completedProjectSlide(_ project: ResidentCompletedProject) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+
+            AsyncImage(url: URL(string: project.image_url ?? "")) { image in
+                image
+                .resizable()
+                .scaledToFill()
+            } placeholder: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18)
+                    .fill(.black.opacity(0.25))
+
+                    ProgressView()
+                    .tint(.cyan)
+                }
+            }
+            .frame(height: 170)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+
+            HStack(spacing: 12) {
+                Image(systemName: "mappin.circle.fill")
+                .foregroundStyle(.cyan)
+                .font(.system(size: 30))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(project.vendor_name ?? "Vendor")
+                    .font(.headline.bold())
+                    .foregroundStyle(.white)
+
+                    Text(project.service ?? "Service")
+                    .font(.subheadline)
+                    .foregroundStyle(.cyan)
+                }
+
+                Spacer()
+
+                approvalBadge(project.approval_status ?? "pending_review")
+            }
+
+            if let reason = project.photo_rejection_reason, !reason.isEmpty {
+                Text(reason)
+                .font(.caption)
+                .foregroundStyle(.red.opacity(0.9))
+                .lineLimit(2)
+            }
+        }
+        .padding()
+        .background(.black.opacity(0.22))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .padding(.horizontal, 4)
+    }
+
+    private func approvalBadge(_ status: String) -> some View {
+        let displayText: String
+        let color: Color
+
+        switch status {
+        case "approved":
+            displayText = "Approved"
+            color = .green
+        case "rejected":
+            displayText = "Rejected"
+            color = .red
+        case "pending_review":
+            displayText = "Review"
+            color = .orange
+        case "not_submitted":
+            displayText = "No Photo"
+            color = .gray
+        default:
+            displayText = "Pending"
+            color = .yellow
+        }
+
+        return Text(displayText)
+        .font(.caption.bold())
+        .foregroundStyle(color)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.15))
+        .clipShape(Capsule())
+    }
+
+    private func loadCompletedProjects() {
+        guard residentId > 0 else {
+            completedProjectsError = "Resident profile not found."
+            return
+        }
+
+        completedProjectsLoading = true
+        completedProjectsError = ""
+
+        let urlString = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/completed-projects/\(residentId)"
+
+        guard let url = URL(string: urlString) else {
+            completedProjectsLoading = false
+            completedProjectsError = "Invalid completed projects URL."
+            return
+        }
+
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            DispatchQueue.main.async {
+                completedProjectsLoading = false
+            }
+
+            if let error = error {
+                DispatchQueue.main.async {
+                    completedProjectsError = error.localizedDescription
+                }
+                return
+            }
+
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completedProjectsError = "No completed projects found."
+                }
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(CompletedProjectsResponse.self, from: data)
+
+                DispatchQueue.main.async {
+                    if decoded.success == true {
+                        completedProjects = decoded.projects ?? []
+                    } else {
+                        completedProjectsError = decoded.error ?? "Could not load completed projects."
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completedProjectsError = String(data: data, encoding: .utf8) ?? "Could not decode completed projects."
+                }
+                print(error)
+                print(String(data: data, encoding: .utf8) ?? "")
+            }
+        }.resume()
+    }
+
+    private func loadSelectedPhoto(from item: PhotosPickerItem?) {
+        guard let item else { return }
+
+        Task {
+            do {
+                if let data = try await item.loadTransferable(type: Data.self),
+                let image = UIImage(data: data) {
+                    await MainActor.run {
+                        selectedImage = image
+                        uploadMessage = ""
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    uploadMessage = "Could not load selected photo."
+                }
+            }
+        }
+    }
+
+    private func submitSelectedProject() {
+        guard selectedImage != nil else {
+            uploadMessage = "Please select a finished project photo first."
+            return
+        }
+
+        uploadMessage = "Photo selected for \(selectedService). Backend upload is the next step."
     }
 }
