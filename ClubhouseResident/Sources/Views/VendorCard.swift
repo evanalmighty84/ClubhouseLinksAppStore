@@ -22,7 +22,7 @@ struct VendorCard: View {
             .font(.title3.bold())
             .foregroundStyle(.white)
 
-            Text(vendor.category)
+            Text(vendor.category ?? "")
             .foregroundStyle(.cyan)
 
             if let description = vendor.description {
