@@ -66,11 +66,11 @@ struct SignupView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Neighborhood Code")
+                        Text("Invite Code")
                         .foregroundStyle(.white.opacity(0.9))
                         .font(.headline)
 
-                        NeonTextField("Enter Neighborhood Code", text: $neighborhoodCode)
+                        NeonTextField("Enter Invite Code", text: $neighborhoodCode)
                     }
 
                     if !errorMessage.isEmpty {
@@ -197,32 +197,33 @@ struct SignupView: View {
                 do {
                     let decoded = try JSONDecoder().decode(SignupResponse.self, from: data)
 
-                    if decoded.success {
-                        residentId = decoded.resident_id
-                        savedFirstName = decoded.resident.first_name
-                        savedLastName = decoded.resident.last_name
-                        savedPhone = decoded.resident.phone
+                    if decoded.success, let resident = decoded.resident, let newResidentId = decoded.resident_id {
+                        residentId = newResidentId
+                        savedFirstName = resident.first_name
+                        savedLastName = resident.last_name
+                        savedPhone = resident.phone
                         savedAddress = address
-                        residentApprovalStatus = decoded.resident.approval_status
-                        residentNeighborhoodId = decoded.resident.neighborhood_id
-                        residentNeighborhoodName = decoded.resident.neighborhood_name ?? "Country Place"
+                        residentApprovalStatus = resident.approval_status
+                        residentNeighborhoodId = resident.neighborhood_id ?? 0
+                        residentNeighborhoodName = resident.neighborhood_name ?? ""
                         residentIsSignedUp = true
                     } else {
                         errorMessage = decoded.error ?? "Signup failed."
                     }
-                } catch {
-                    errorMessage = "Could not read server response."
-                    print(String(data: data, encoding: .utf8) ?? "")
-                }
+                }  catch {
+let rawResponse = String(data: data, encoding: .utf8) ?? "Unreadable response"
+errorMessage = rawResponse
+print(rawResponse)
+}
             }
         }.resume()
     }
 }
 
 struct SignupResponse: Codable {
-    let success: Bool
-    let resident_id: Int
-    let resident: ResidentAccount
+    let success: Bool?
+    let resident_id: Int?
+    let resident: ResidentAccount?
     let message: String?
     let error: String?
 }
@@ -232,7 +233,7 @@ struct ResidentAccount: Codable {
     let first_name: String
     let last_name: String
     let phone: String
-    let neighborhood_id: Int
+    let neighborhood_id: Int?
     let neighborhood_name: String?
     let approval_status: String
     let sms_verified: Bool
