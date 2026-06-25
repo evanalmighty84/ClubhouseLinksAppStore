@@ -26,6 +26,7 @@ struct VendorSignupPerson: Codable, Identifiable {
     let id: Int
     let first_name: String?
     let address: String?
+    let distance_miles: Double?
 }
 
 struct VendorDirectoryView: View {
