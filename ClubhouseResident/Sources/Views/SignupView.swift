@@ -80,6 +80,7 @@ struct SignupView: View {
                     }
 
                     Button {
+                        hideKeyboard()
                         submitSignup()
                     } label: {
                         Text(isLoading ? "Creating..." : "Create Account")
@@ -120,6 +121,10 @@ struct SignupView: View {
                     Spacer(minLength: 80)
                 }
                 .padding()
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                hideKeyboard()
             }
         }
         .navigationTitle("Sign Up")
@@ -217,6 +222,15 @@ struct SignupView: View {
                 }
             }
         }.resume()
+    }
+
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
     }
 }
 
