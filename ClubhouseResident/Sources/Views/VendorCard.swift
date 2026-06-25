@@ -43,7 +43,6 @@ struct VendorCard: View {
 
             if !signedUpPeople.isEmpty {
                 swipeableNeighborSection
-                simpleNeighborListSection
             }
         }
         .padding()
@@ -79,18 +78,19 @@ struct VendorCard: View {
     }
 
     private var swipeableNeighborSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Swipeable version")
-            .font(.caption.bold())
-            .foregroundStyle(.cyan.opacity(0.9))
+        TabView {
+            ForEach(signedUpPeople) { person in
+                HStack(alignment: .center, spacing: 14) {
 
-            TabView {
-                ForEach(signedUpPeople) { person in
-                    VStack(spacing: 6) {
+                    Image(systemName: "mappin.circle.fill")
+                    .foregroundStyle(.cyan)
+                    .font(.system(size: 34))
+
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("\(cleanName(person.first_name)) used this vendor")
                         .font(.headline.bold())
                         .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
 
                         if let distance = person.distance_miles {
                             Text("\(formatDistance(distance)) miles away")
@@ -102,63 +102,22 @@ struct VendorCard: View {
                             Text(address)
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.65))
-                            .multilineTextAlignment(.center)
-                        }
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(.black.opacity(0.22))
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .padding(.horizontal, 4)
-                }
-            }
-            .frame(height: 130)
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-        }
-        .padding(.top, 6)
-    }
-
-    private var simpleNeighborListSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("List version")
-            .font(.caption.bold())
-            .foregroundStyle(.cyan.opacity(0.9))
-
-            ForEach(signedUpPeople) { person in
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "mappin.circle.fill")
-                    .foregroundStyle(.cyan)
-                    .font(.system(size: 18))
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(cleanName(person.first_name))
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white)
-
-                        HStack(spacing: 6) {
-                            if let distance = person.distance_miles {
-                                Text("\(formatDistance(distance)) miles away")
-                                .font(.caption)
-                                .foregroundStyle(.cyan)
-                            }
-
-                            if let address = person.address, !address.isEmpty {
-                                Text("• \(address)")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.6))
-                                .lineLimit(1)
-                            }
+                            .lineLimit(1)
                         }
                     }
 
                     Spacer()
                 }
-                .padding(10)
-                .background(.black.opacity(0.18))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(.black.opacity(0.22))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .padding(.horizontal, 4)
             }
         }
-        .padding(.top, 4)
+        .frame(height: 130)
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+        .padding(.top, 8)
     }
 
     private func cleanName(_ name: String?) -> String {

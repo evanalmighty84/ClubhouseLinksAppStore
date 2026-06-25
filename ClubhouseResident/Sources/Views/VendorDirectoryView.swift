@@ -47,11 +47,13 @@ struct VendorDirectoryView: View {
             ScrollView {
                 VStack(spacing: 20) {
 
+                    residentCard
+
                     Text("Vendor Directory")
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
 
-                    residentCard
+
 
                     if isLoading {
                         ProgressView()
