@@ -1,6 +1,24 @@
 import SwiftUI
 import PhotosUI
 
+struct CompletedProjectsResponse: Codable {
+    let success: Bool?
+    let projects: [ResidentCompletedProject]?
+    let error: String?
+}
+
+struct ResidentCompletedProject: Codable, Identifiable {
+    let id: Int
+    let resident_id: Int?
+    let vendor_id: Int?
+    let vendor_name: String?
+    let service: String?
+    let image_url: String?
+    let approval_status: String?
+    let moderation_status: String?
+    let photo_rejection_reason: String?
+}
+
 struct ResidentProfileView: View {
     @AppStorage("residentId") private var residentId = 0
     @AppStorage("residentFirstName") private var firstName = ""
@@ -16,6 +34,10 @@ struct ResidentProfileView: View {
     @State private var selectedImage: UIImage?
     @State private var uploadMessage = ""
 
+    @State private var completedProjects: [ResidentCompletedProject] = []
+    @State private var completedProjectsLoading = false
+    @State private var completedProjectsError = ""
+
     private let serviceOptions = [
         "Painting",
         "Pool Service",
@@ -25,16 +47,6 @@ struct ResidentProfileView: View {
         "Electrical",
         "Landscaping",
         "General Contractor"
-    ]
-
-    private let completedProjects: [CompletedProject] = [
-        CompletedProject(
-            id: 1,
-            service: "Painting",
-            vendorName: "EZ Paint",
-            imageUrl: "https://res.cloudinary.com/drna15e8q/image/upload/v1782416261/3fe856e3-954b-48c8-bdad-4ed8d857e220.png",
-            approvalStatus: "pending_review"
-        )
     ]
 
     var body: some View {
@@ -79,7 +91,10 @@ struct ResidentProfileView: View {
                 .padding()
             }
         }
-        .onChange(of: selectedPhotoItem) { _, newItem in
+        .onAppear {
+            loadCompletedProjects()
+        }
+        .onChange(of: selectedPhotoItem) { newItem in
             loadSelectedPhoto(from: newItem)
         }
     }
@@ -294,7 +309,20 @@ struct ResidentProfileView: View {
                 .foregroundStyle(.cyan)
             }
 
-            if completedProjects.isEmpty {
+            if completedProjectsLoading {
+                ProgressView()
+                .tint(.cyan)
+                .frame(maxWidth: .infinity)
+                .padding()
+            } else if !completedProjectsError.isEmpty {
+                Text(completedProjectsError)
+                .font(.subheadline)
+                .foregroundStyle(.red)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(.black.opacity(0.22))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+            } else if completedProjects.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "photo.on.rectangle.angled")
                     .font(.system(size: 38))
@@ -330,10 +358,10 @@ struct ResidentProfileView: View {
         .shadow(color: .purple.opacity(0.35), radius: 12)
     }
 
-    private func completedProjectSlide(_ project: CompletedProject) -> some View {
+    private func completedProjectSlide(_ project: ResidentCompletedProject) -> some View {
         VStack(alignment: .leading, spacing: 12) {
 
-            AsyncImage(url: URL(string: project.imageUrl)) { image in
+            AsyncImage(url: URL(string: project.image_url ?? "")) { image in
                 image
                 .resizable()
                 .scaledToFill()
@@ -356,18 +384,25 @@ struct ResidentProfileView: View {
                 .font(.system(size: 30))
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(project.vendorName)
+                    Text(project.vendor_name ?? "Vendor")
                     .font(.headline.bold())
                     .foregroundStyle(.white)
 
-                    Text(project.service)
+                    Text(project.service ?? "Service")
                     .font(.subheadline)
                     .foregroundStyle(.cyan)
                 }
 
                 Spacer()
 
-                approvalBadge(project.approvalStatus)
+                approvalBadge(project.approval_status ?? "pending_review")
+            }
+
+            if let reason = project.photo_rejection_reason, !reason.isEmpty {
+                Text(reason)
+                .font(.caption)
+                .foregroundStyle(.red.opacity(0.9))
+                .lineLimit(2)
             }
         }
         .padding()
@@ -390,6 +425,9 @@ struct ResidentProfileView: View {
         case "pending_review":
             displayText = "Review"
             color = .orange
+        case "not_submitted":
+            displayText = "No Photo"
+            color = .gray
         default:
             displayText = "Pending"
             color = .yellow
@@ -402,6 +440,62 @@ struct ResidentProfileView: View {
         .padding(.vertical, 6)
         .background(color.opacity(0.15))
         .clipShape(Capsule())
+    }
+
+    private func loadCompletedProjects() {
+        guard residentId > 0 else {
+            completedProjectsError = "Resident profile not found."
+            return
+        }
+
+        completedProjectsLoading = true
+        completedProjectsError = ""
+
+        let urlString = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/completed-projects/\(residentId)"
+
+        guard let url = URL(string: urlString) else {
+            completedProjectsLoading = false
+            completedProjectsError = "Invalid completed projects URL."
+            return
+        }
+
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            DispatchQueue.main.async {
+                completedProjectsLoading = false
+            }
+
+            if let error = error {
+                DispatchQueue.main.async {
+                    completedProjectsError = error.localizedDescription
+                }
+                return
+            }
+
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completedProjectsError = "No completed projects found."
+                }
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(CompletedProjectsResponse.self, from: data)
+
+                DispatchQueue.main.async {
+                    if decoded.success == true {
+                        completedProjects = decoded.projects ?? []
+                    } else {
+                        completedProjectsError = decoded.error ?? "Could not load completed projects."
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completedProjectsError = String(data: data, encoding: .utf8) ?? "Could not decode completed projects."
+                }
+                print(error)
+                print(String(data: data, encoding: .utf8) ?? "")
+            }
+        }.resume()
     }
 
     private func loadSelectedPhoto(from item: PhotosPickerItem?) {
@@ -432,12 +526,4 @@ struct ResidentProfileView: View {
 
         uploadMessage = "Photo selected for \(selectedService). Backend upload is the next step."
     }
-}
-
-struct CompletedProject: Identifiable {
-    let id: Int
-    let service: String
-    let vendorName: String
-    let imageUrl: String
-    let approvalStatus: String
 }
