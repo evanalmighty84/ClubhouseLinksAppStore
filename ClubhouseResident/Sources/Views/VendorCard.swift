@@ -92,6 +92,27 @@ struct VendorCard: View {
                         .foregroundStyle(.white)
                         .lineLimit(2)
 
+                        if let photoUrl = person.finished_photo_url,
+                        !photoUrl.isEmpty,
+                        let url = URL(string: photoUrl) {
+                            AsyncImage(url: url) { image in
+                                image
+                                .resizable()
+                                .scaledToFill()
+                            } placeholder: {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                    .fill(.black.opacity(0.25))
+
+                                    ProgressView()
+                                    .tint(.cyan)
+                                }
+                            }
+                            .frame(width: 82, height: 58)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .padding(.vertical, 2)
+                        }
+
                         if let distance = person.distance_miles {
                             Text("\(formatDistance(distance)) miles away")
                             .font(.subheadline)
