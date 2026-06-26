@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import MapKit
 
 struct CompletedProjectsResponse: Codable {
     let success: Bool?
@@ -75,23 +76,6 @@ struct ResidentProfileView: View {
                     .padding(.top, 12)
 
                     flippableProfileCard
-
-                    Text("Swipe your profile card to see completed projects. Tap your profile card to submit a new one.")
-                    .font(.headline.bold())
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color.yellow,
-                                Color.orange,
-                                Color.yellow.opacity(0.9)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-
                     NavigationLink {
                         VendorDirectoryView()
                     } label: {
@@ -197,7 +181,7 @@ struct ResidentProfileView: View {
                         profileProjectSlide(project)
                     }
                 }
-                .frame(height: completedProjects.isEmpty ? 210 : 330)
+                .frame(height: 315)
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: completedProjects.isEmpty ? .never : .automatic))
             }
         }
@@ -210,6 +194,9 @@ struct ResidentProfileView: View {
 
     private var profileInfoOnlySlide: some View {
         VStack(spacing: 10) {
+
+            AppleLookAroundCard(address: address)
+
             residentInfoHeader
 
             if !completedProjectsError.isEmpty {
@@ -225,10 +212,23 @@ struct ResidentProfileView: View {
                 .padding(.top, 4)
             }
 
+            Text("Swipe to see completed projects")
+            .font(.caption.bold())
+            .foregroundStyle(.cyan.opacity(0.95))
+
             Text("Tap to submit a completed project")
             .font(.caption.bold())
-            .foregroundStyle(.cyan.opacity(0.9))
-            .padding(.top, 6)
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [
+                        Color.yellow,
+                        Color.orange,
+                        Color.yellow.opacity(0.9)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
         }
         .frame(maxWidth: .infinity)
     }
@@ -691,5 +691,115 @@ struct ResidentProfileView: View {
         let vendorName = selectedVendor()?.company_name ?? "selected vendor"
 
         uploadMessage = "Photo selected for \(vendorName). Backend upload is the next step."
+    }
+}
+
+struct AppleLookAroundCard: View {
+    let address: String
+
+    @State private var lookAroundScene: MKLookAroundScene?
+    @State private var isLoading = true
+    @State private var didFail = false
+
+    var body: some View {
+        ZStack {
+            if let lookAroundScene {
+                LookAroundControllerView(scene: lookAroundScene)
+                .frame(height: 110)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .overlay(
+                    LinearGradient(
+                        colors: [
+                            .black.opacity(0.02),
+                            .black.opacity(0.32)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                )
+            } else {
+                fallbackMapCard
+            }
+
+            if isLoading {
+                ProgressView()
+                .tint(.cyan)
+            }
+        }
+        .task {
+            await loadLookAroundScene()
+        }
+    }
+
+    private var fallbackMapCard: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18)
+            .fill(.black.opacity(0.22))
+
+            VStack(spacing: 6) {
+                Image(systemName: didFail ? "map" : "binoculars.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(.cyan)
+
+                Text(didFail ? "Look Around unavailable here" : "Loading Apple Look Around")
+                .font(.caption.bold())
+                .foregroundStyle(.white.opacity(0.75))
+            }
+        }
+        .frame(height: 110)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func loadLookAroundScene() async {
+        guard !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            await MainActor.run {
+                isLoading = false
+                didFail = true
+            }
+            return
+        }
+
+        do {
+            let placemarks = try await CLGeocoder().geocodeAddressString("\(address), Plano, TX")
+
+            guard let coordinate = placemarks.first?.location?.coordinate else {
+                await MainActor.run {
+                    isLoading = false
+                    didFail = true
+                }
+                return
+            }
+
+            let request = MKLookAroundSceneRequest(coordinate: coordinate)
+            let scene = try await request.scene
+
+            await MainActor.run {
+                self.lookAroundScene = scene
+                self.isLoading = false
+                self.didFail = scene == nil
+            }
+        } catch {
+            await MainActor.run {
+                self.isLoading = false
+                self.didFail = true
+            }
+        }
+    }
+}
+
+struct LookAroundControllerView: UIViewControllerRepresentable {
+    let scene: MKLookAroundScene
+
+    func makeUIViewController(context: Context) -> MKLookAroundViewController {
+        let controller = MKLookAroundViewController(scene: scene)
+        controller.isNavigationEnabled = false
+        controller.showsRoadLabels = false
+        return controller
+    }
+
+    func updateUIViewController(_ controller: MKLookAroundViewController, context: Context) {
+        controller.scene = scene
     }
 }
