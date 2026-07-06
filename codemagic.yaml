@@ -33,11 +33,9 @@ workflows:
             --disable-xcpretty \
             --log-stream stdout
 
-      - name: Publish to App Store Connect
-        script: |
-          app-store-connect publish \
-            --path "$(find build/ios/ipa -name '*.ipa' | head -n 1)" \
-            --apple-id 6778204176
-
     artifacts:
       - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
