@@ -11,6 +11,7 @@ struct SignupView: View {
     @AppStorage("residentNeighborhoodId") private var residentNeighborhoodId = 0
     @AppStorage("residentNeighborhoodName") private var residentNeighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
+    @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
 
     @State private var firstName = ""
     @State private var lastName = ""
@@ -139,6 +140,8 @@ struct SignupView: View {
             return
         }
 
+        residentSignupProvider = "apple"
+
         let givenName = credential.fullName?.givenName ?? ""
         let familyName = credential.fullName?.familyName ?? ""
 
@@ -211,6 +214,11 @@ struct SignupView: View {
                         residentApprovalStatus = resident.approval_status
                         residentNeighborhoodId = resident.neighborhood_id ?? 0
                         residentNeighborhoodName = resident.neighborhood_name ?? ""
+
+                        if residentSignupProvider != "apple" {
+                            residentSignupProvider = "email"
+                        }
+
                         residentIsSignedUp = true
                     } else {
                         errorMessage = decoded.error ?? "Signup failed."
