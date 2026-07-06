@@ -12,6 +12,7 @@ struct SignupView: View {
     @AppStorage("residentNeighborhoodName") private var residentNeighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
     @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
+    @AppStorage("residentAppleUserId") private var residentAppleUserId = ""
 
     @State private var firstName = ""
     @State private var lastName = ""
@@ -141,6 +142,7 @@ struct SignupView: View {
         }
 
         residentSignupProvider = "apple"
+        residentAppleUserId = credential.user
 
         let givenName = credential.fullName?.givenName ?? ""
         let familyName = credential.fullName?.familyName ?? ""
@@ -215,13 +217,16 @@ struct SignupView: View {
                         residentNeighborhoodId = resident.neighborhood_id ?? 0
                         residentNeighborhoodName = resident.neighborhood_name ?? ""
 
+                        // If they did not tap Apple before creating the account,
+                        // mark this as a regular email/manual signup.
                         if residentSignupProvider != "apple" {
                             residentSignupProvider = "email"
                         }
 
+                        // This is what makes HomeView go directly to ResidentProfileView.
                         residentIsSignedUp = true
                     } else {
-                        errorMessage = decoded.error ?? "Signup failed."
+                        errorMessage = decoded.error ?? decoded.message ?? "Signup failed."
                     }
                 } catch {
                     let rawResponse = String(data: data, encoding: .utf8) ?? "Unreadable response"

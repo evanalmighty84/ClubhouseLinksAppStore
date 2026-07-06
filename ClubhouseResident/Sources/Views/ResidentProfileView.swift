@@ -110,7 +110,7 @@ struct ResidentProfileView: View {
                         text: "Request a contractor, service provider, or local business recommendation."
                     )
 
-                    Button {
+/*                    Button {
                         residentIsSignedUp = false
                     } label: {
                         Text("Sign Out")
@@ -121,7 +121,7 @@ struct ResidentProfileView: View {
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                     }
-                    .padding(.top, 4)
+                    .padding(.top, 4)*/
 
                     Spacer(minLength: 90)
                 }
