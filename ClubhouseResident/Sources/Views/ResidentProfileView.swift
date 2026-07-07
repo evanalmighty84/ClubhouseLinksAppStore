@@ -31,6 +31,7 @@ struct ResidentProfileView: View {
         @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
         @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
         @AppStorage("residentAppleUserId") private var residentAppleUserId = ""
+        @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
 
 
 
@@ -137,6 +138,7 @@ struct ResidentProfileView: View {
                             "residentApprovalStatus",
                             "residentNeighborhoodId",
                             "residentNeighborhoodName",
+                            "residentDisplayAreaName",
                             "residentIsSignedUp",
                             "residentSignupProvider",
                             "residentAppleUserId"
@@ -152,6 +154,7 @@ struct ResidentProfileView: View {
                         phone = ""
                         address = ""
                         neighborhoodName = ""
+                        displayAreaName = ""
                         residentIsSignedUp = false
                         residentSignupProvider = "email"
                         residentAppleUserId = ""
@@ -337,7 +340,7 @@ struct ResidentProfileView: View {
             .font(.title.bold())
             .foregroundStyle(.white)
 
-            Text(neighborhoodName.isEmpty ? "Country Place" : neighborhoodName)
+            Text(profileAreaName)
             .font(.headline)
             .foregroundStyle(.cyan)
 
@@ -743,6 +746,21 @@ struct AppleLookAroundCard: View {
     @State private var lookAroundScene: MKLookAroundScene?
     @State private var isLoading = true
     @State private var didFail = false
+
+    private var profileAreaName: String {
+        let cleanNeighborhood = neighborhoodName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanDisplayArea = displayAreaName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !cleanNeighborhood.isEmpty {
+            return cleanNeighborhood
+        }
+
+        if !cleanDisplayArea.isEmpty {
+            return cleanDisplayArea
+        }
+
+        return "Area not set"
+    }
 
     var body: some View {
         ZStack {

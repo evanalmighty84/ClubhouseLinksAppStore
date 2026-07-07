@@ -9,6 +9,7 @@ struct SignupView: View {
     @AppStorage("residentAddress") private var savedAddress = ""
     @AppStorage("residentApprovalStatus") private var residentApprovalStatus = ""
     @AppStorage("residentNeighborhoodId") private var residentNeighborhoodId = 0
+    @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
     @AppStorage("residentNeighborhoodName") private var residentNeighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
     @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
@@ -620,7 +621,9 @@ struct SignupView: View {
                         savedAddress = address
                         residentApprovalStatus = resident.approval_status
                         residentNeighborhoodId = resident.neighborhood_id ?? 0
+                        displayAreaName = resident.display_area_name ?? ""
                         residentNeighborhoodName = resident.neighborhood_name ?? ""
+
 
                         if residentSignupProvider != "apple" {
                             residentSignupProvider = "email"
@@ -712,6 +715,7 @@ struct ResidentAccount: Codable {
     let phone: String
     let neighborhood_id: Int?
     let neighborhood_name: String?
+    let display_area_name: String?
     let approval_status: String
     let sms_verified: Bool
 }
