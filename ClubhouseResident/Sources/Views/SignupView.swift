@@ -22,6 +22,8 @@ struct SignupView: View {
     @State private var errorMessage = ""
     @State private var isLoading = false
 
+    @StateObject private var appleSignInCoordinator = AppleSignInCoordinator()
+
     private let signupURL = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/signup"
 
     var body: some View {
@@ -77,7 +79,7 @@ struct SignupView: View {
 
                     if !errorMessage.isEmpty {
                         Text(errorMessage)
-                        .foregroundStyle(errorMessage.contains("successful") ? .green : .red)
+                        .foregroundStyle(errorMessage.contains("successful") || errorMessage.contains("success") ? .green : .red)
                         .font(.subheadline)
                     }
 
@@ -101,34 +103,25 @@ struct SignupView: View {
                     }
                     .disabled(isLoading)
 
-                    SignInWithAppleButton(.signUp) { request in
-                        errorMessage = "Apple button tapped..."
-                        print("Apple button tapped")
+                    Button {
+                        hideKeyboard()
+                        startAppleSignIn()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "apple.logo")
+                            .font(.title3.bold())
 
-                        request.requestedScopes = [.fullName, .email]
-                    } onCompletion: { result in
-                        errorMessage = "Apple completion fired."
-                        print("Apple completion fired")
-
-                        switch result {
-                        case .success(let authResults):
-                            print("Apple success")
-                            errorMessage = "Apple success."
-                            handleAppleSignInSuccess(authResults)
-
-                        case .failure(let error):
-                            print("Apple error:", error.localizedDescription)
-
-                            if let authError = error as? ASAuthorizationError {
-                                errorMessage = "Apple failed. Code: \(authError.code.rawValue)"
-                            } else {
-                                errorMessage = "Apple failed: \(error.localizedDescription)"
-                            }
+                            Text("Sign up with Apple")
+                            .font(.headline.bold())
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(.white)
+                        .foregroundStyle(.black)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
 
                     Spacer(minLength: 80)
                 }
@@ -138,15 +131,29 @@ struct SignupView: View {
         }
         .navigationTitle("Sign Up")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            appleSignInCoordinator.onSuccess = { credential in
+                handleAppleCredential(credential)
+            }
+
+            appleSignInCoordinator.onFailure = { error in
+                if let authError = error as? ASAuthorizationError {
+                    errorMessage = "Apple failed. Code: \(authError.code.rawValue)"
+                } else {
+                    errorMessage = "Apple failed: \(error.localizedDescription)"
+                }
+            }
+        }
     }
 
-    private func handleAppleSignInSuccess(_ authResults: ASAuthorization) {
+    private func startAppleSignIn() {
         errorMessage = ""
 
-        guard let credential = authResults.credential as? ASAuthorizationAppleIDCredential else {
-            errorMessage = "Could not read Apple sign in information."
-            return
-        }
+        appleSignInCoordinator.startSignIn()
+    }
+
+    private func handleAppleCredential(_ credential: ASAuthorizationAppleIDCredential) {
+        errorMessage = ""
 
         residentSignupProvider = "apple"
         residentAppleUserId = credential.user
@@ -162,7 +169,11 @@ struct SignupView: View {
             lastName = familyName
         }
 
-        errorMessage = "Apple Sign In successful. Please enter your phone number, address, and neighborhood code to finish creating your resident account."
+        if givenName.isEmpty && familyName.isEmpty {
+            errorMessage = "Apple Sign In successful. Apple did not send your name this time, so enter your details and finish creating your account."
+        } else {
+            errorMessage = "Apple Sign In successful. Please enter your phone number, address, and neighborhood code to finish creating your resident account."
+        }
     }
 
     private func submitSignup() {
@@ -224,13 +235,10 @@ struct SignupView: View {
                         residentNeighborhoodId = resident.neighborhood_id ?? 0
                         residentNeighborhoodName = resident.neighborhood_name ?? ""
 
-                        // If they did not tap Apple before creating the account,
-                        // mark this as a regular email/manual signup.
                         if residentSignupProvider != "apple" {
                             residentSignupProvider = "email"
                         }
 
-                        // This is what makes HomeView go directly to ResidentProfileView.
                         residentIsSignedUp = true
                     } else {
                         errorMessage = decoded.error ?? decoded.message ?? "Signup failed."
@@ -251,6 +259,49 @@ struct SignupView: View {
             from: nil,
             for: nil
         )
+    }
+}
+
+final class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    var onSuccess: ((ASAuthorizationAppleIDCredential) -> Void)?
+    var onFailure: ((Error) -> Void)?
+
+    func startSignIn() {
+        let provider = ASAuthorizationAppleIDProvider()
+        let request = provider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        controller.performRequests()
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            let error = NSError(
+                domain: "AppleSignIn",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Could not read Apple sign in information."]
+            )
+            onFailure?(error)
+            return
+        }
+
+        onSuccess?(credential)
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        onFailure?(error)
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+        let window = scene.windows.first(where: { $0.isKeyWindow }) else {
+            return ASPresentationAnchor()
+        }
+
+        return window
     }
 }
 
