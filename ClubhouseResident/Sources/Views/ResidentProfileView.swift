@@ -70,6 +70,20 @@ struct ResidentProfileView: View {
         let combined = vendorCategories + fallbackServiceOptions
         return Array(Set(combined)).sorted()
     }
+    private var profileAreaName: String {
+        let cleanNeighborhood = neighborhoodName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanDisplayArea = displayAreaName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !cleanNeighborhood.isEmpty {
+            return cleanNeighborhood
+        }
+
+        if !cleanDisplayArea.isEmpty {
+            return cleanDisplayArea
+        }
+
+        return "Area not set"
+    }
 
     var body: some View {
         NeonBackground {
@@ -747,20 +761,7 @@ struct AppleLookAroundCard: View {
     @State private var isLoading = true
     @State private var didFail = false
 
-    private var profileAreaName: String {
-        let cleanNeighborhood = neighborhoodName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanDisplayArea = displayAreaName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if !cleanNeighborhood.isEmpty {
-            return cleanNeighborhood
-        }
-
-        if !cleanDisplayArea.isEmpty {
-            return cleanDisplayArea
-        }
-
-        return "Area not set"
-    }
 
     var body: some View {
         ZStack {
