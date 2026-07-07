@@ -122,6 +122,44 @@ struct ResidentProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                     }
                     .padding(.top, 4)*/
+                    Button {
+                        let keysToRemove = [
+                            "residentId",
+                            "residentFirstName",
+                            "residentLastName",
+                            "residentPhone",
+                            "residentAddress",
+                            "residentApprovalStatus",
+                            "residentNeighborhoodId",
+                            "residentNeighborhoodName",
+                            "residentIsSignedUp",
+                            "residentSignupProvider",
+                            "residentAppleUserId"
+                        ]
+
+                        for key in keysToRemove {
+                            UserDefaults.standard.removeObject(forKey: key)
+                        }
+
+                        residentId = 0
+                        firstName = ""
+                        lastName = ""
+                        phone = ""
+                        address = ""
+                        neighborhoodName = ""
+                        residentIsSignedUp = false
+                        residentSignupProvider = "email"
+                        residentAppleUserId = ""
+                    } label: {
+                        Text("Reset Local App Storage")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.red.opacity(0.85))
+                        .cornerRadius(16)
+                    }
+                    .padding(.horizontal)
 
                     Spacer(minLength: 90)
                 }
