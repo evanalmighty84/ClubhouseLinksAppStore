@@ -85,7 +85,7 @@ struct SignupView: View {
                         hideKeyboard()
                         submitSignup()
                     } label: {
-                        Text(isLoading ? "Creating..." : "Create Account")
+                        Text(isLoading ? "Creating..." : "Sign up With Phone number")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -135,9 +135,6 @@ struct SignupView: View {
                 .padding()
             }
             .scrollDismissesKeyboard(.interactively)
-            .onTapGesture {
-                hideKeyboard()
-            }
         }
         .navigationTitle("Sign Up")
         .navigationBarTitleDisplayMode(.inline)
