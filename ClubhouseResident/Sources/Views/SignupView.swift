@@ -102,17 +102,27 @@ struct SignupView: View {
                     .disabled(isLoading)
 
                     SignInWithAppleButton(.signUp) { request in
+                        errorMessage = "Apple button tapped..."
+                        print("Apple button tapped")
+
                         request.requestedScopes = [.fullName, .email]
                     } onCompletion: { result in
+                        errorMessage = "Apple completion fired."
+                        print("Apple completion fired")
+
                         switch result {
                         case .success(let authResults):
+                            print("Apple success")
+                            errorMessage = "Apple success."
                             handleAppleSignInSuccess(authResults)
 
                         case .failure(let error):
+                            print("Apple error:", error.localizedDescription)
+
                             if let authError = error as? ASAuthorizationError {
-                                errorMessage = "Apple Sign In failed. Code: \(authError.code.rawValue)"
+                                errorMessage = "Apple failed. Code: \(authError.code.rawValue)"
                             } else {
-                                errorMessage = error.localizedDescription
+                                errorMessage = "Apple failed: \(error.localizedDescription)"
                             }
                         }
                     }
