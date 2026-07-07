@@ -21,7 +21,7 @@ struct ResidentCompletedProject: Codable, Identifiable {
 }
 
 struct ResidentProfileView: View {
-    struct ResidentProfileView: View {
+
         @AppStorage("residentId") private var residentId = 0
         @AppStorage("residentFirstName") private var firstName = ""
         @AppStorage("residentLastName") private var lastName = ""
@@ -32,8 +32,7 @@ struct ResidentProfileView: View {
         @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
         @AppStorage("residentAppleUserId") private var residentAppleUserId = ""
 
-        // your @State values continue here...
-    }
+
 
     @State private var isProfileFlipped = false
 
