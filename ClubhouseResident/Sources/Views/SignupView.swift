@@ -23,7 +23,7 @@ struct SignupView: View {
     @State private var neighborhoodCode = ""
     @State private var errorMessage = ""
     @State private var isLoading = false
-    @StateObject private var appleSignInCoordinator = AppleSignInCoordinator()
+
 
     @State private var currentStep: SignupStep = .welcomeChoice
     @FocusState private var focusedField: SignupField?
@@ -68,19 +68,7 @@ struct SignupView: View {
         }
         .navigationTitle("Sign Up")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            appleSignInCoordinator.onSuccess = { credential in
-                handleAppleCredential(credential)
-            }
 
-            appleSignInCoordinator.onFailure = { error in
-                if let authError = error as? ASAuthorizationError {
-                    errorMessage = "Apple Sign In failed. Code: \(authError.code.rawValue)"
-                } else {
-                    errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
-                }
-            }
-        }
     }
 
     private var headerSection: some View {
@@ -340,25 +328,14 @@ struct SignupView: View {
     }
 
     private var appleSignupButton: some View {
-        Button {
-            hideKeyboard()
-            appleSignInCoordinator.startSignIn()
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "apple.logo")
-                .font(.title3.bold())
-
-                Text("Sign up with Apple")
-                .font(.headline.bold())
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(.white)
-            .foregroundStyle(.black)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+        SignInWithAppleButton(.signUp) { request in
+            request.requestedScopes = [.fullName, .email]
+        } onCompletion: { result in
+            handleAppleSignInResult(result)
         }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
+        .signInWithAppleButtonStyle(.white)
+        .frame(height: 56)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
     private func questionCard(
@@ -559,7 +536,26 @@ struct SignupView: View {
 
         goTo(.appleWelcome)
     }
+    private func handleAppleSignInResult(_ result: Result<ASAuthorization, Error>) {
+        hideKeyboard()
 
+        switch result {
+        case .success(let authResults):
+            guard let credential = authResults.credential as? ASAuthorizationAppleIDCredential else {
+                errorMessage = "Could not read Apple sign in information."
+                return
+            }
+
+            handleAppleCredential(credential)
+
+        case .failure(let error):
+            if let authError = error as? ASAuthorizationError {
+                errorMessage = "Apple Sign In failed. Code: \(authError.code.rawValue)"
+            } else {
+                errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
+            }
+        }
+    }
     private func submitSignup() {
         errorMessage = ""
 
@@ -719,60 +715,3 @@ struct ResidentAccount: Codable {
     let sms_verified: Bool
 }
 
-final class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-    var onSuccess: ((ASAuthorizationAppleIDCredential) -> Void)?
-    var onFailure: ((Error) -> Void)?
-
-    private var currentController: ASAuthorizationController?
-
-    func startSignIn() {
-        let provider = ASAuthorizationAppleIDProvider()
-        let request = provider.createRequest()
-        request.requestedScopes = [.fullName, .email]
-
-        let controller = ASAuthorizationController(authorizationRequests: [request])
-        controller.delegate = self
-        controller.presentationContextProvider = self
-        currentController = controller
-        controller.performRequests()
-    }
-
-    func authorizationController(
-    controller: ASAuthorizationController,
-    didCompleteWithAuthorization authorization: ASAuthorization
-    ) {
-        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-            let error = NSError(
-                domain: "AppleSignIn",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Could not read Apple sign in information."]
-            )
-            onFailure?(error)
-            return
-        }
-
-        onSuccess?(credential)
-    }
-
-    func authorizationController(
-    controller: ASAuthorizationController,
-    didCompleteWithError error: Error
-    ) {
-        onFailure?(error)
-    }
-
-    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        if let window = UIApplication.shared.connectedScenes
-        .compactMap({ $0 as? UIWindowScene })
-        .flatMap({ $0.windows })
-        .first(where: { $0.isKeyWindow }) {
-            return window
-        }
-
-        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) {
-            return window
-        }
-
-        return UIApplication.shared.windows.first ?? ASPresentationAnchor()
-    }
-}
