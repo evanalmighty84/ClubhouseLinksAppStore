@@ -62,9 +62,6 @@ struct SignupView: View {
                 .padding()
             }
             .scrollDismissesKeyboard(.interactively)
-            .onTapGesture {
-                hideKeyboard()
-            }
         }
         .navigationTitle("Sign Up")
         .navigationBarTitleDisplayMode(.inline)
