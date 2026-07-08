@@ -2,6 +2,7 @@ import SwiftUI
 import AuthenticationServices
 
 struct SignupView: View {
+    @Environment(\.dismiss) private var dismiss
     @AppStorage("residentId") private var residentId = 0
     @AppStorage("residentFirstName") private var savedFirstName = ""
     @AppStorage("residentLastName") private var savedLastName = ""
@@ -430,9 +431,6 @@ struct SignupView: View {
             .disabled(isPrimaryDisabled)
             .opacity(isPrimaryDisabled ? 0.6 : 1)
 
-            if currentStep == .inviteCode {
-                appleSignupButton
-            }
         }
         .padding(24)
         .frame(maxWidth: .infinity)
@@ -630,6 +628,7 @@ struct SignupView: View {
                         }
 
                         residentIsSignedUp = true
+                        dismiss()
                     } else {
                         errorMessage = decoded.error ?? "Signup failed."
                     }
