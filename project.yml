@@ -1,4 +1,4 @@
-name: ClubhouseResident
+name: ClubhouseLinks
 
 options:
   bundleIdPrefix: com.clubhouselinks
@@ -9,9 +9,9 @@ options:
 
 settings:
   base:
-    PRODUCT_BUNDLE_IDENTIFIER: com.clubhouselinks.resident
+    PRODUCT_BUNDLE_IDENTIFIER: com.clubhouselinks.app
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "27"
+    CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     DEVELOPMENT_TEAM: 395Q3284J6
@@ -39,24 +39,28 @@ targets:
         CFBundleDisplayName: "Clubhouse Links"
         CFBundleIconName: AppIcon
         CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
-        CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "27"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSRequiresIPhoneOS: true
         UIRequiresFullScreen: true
         MinimumOSVersion: "16.0"
         UILaunchStoryboardName: LaunchScreen
+
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
           - UIInterfaceOrientationPortraitUpsideDown
+
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: false
 

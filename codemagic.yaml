@@ -9,7 +9,8 @@ workflows:
       xcode: latest
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.clubhouselinks.resident
+        bundle_identifier: com.clubhouselinks.app
+
 
     scripts:
       - name: Install XcodeGen
@@ -27,7 +28,7 @@ workflows:
       - name: Build signed IPA
         script: |
           xcode-project build-ipa \
-            --project "ClubhouseResident.xcodeproj" \
+            --project "ClubhouseLinks.xcodeproj" \
             --scheme "ClubhouseResident" \
             --archive-flags="-allowProvisioningUpdates" \
             --disable-xcpretty \
