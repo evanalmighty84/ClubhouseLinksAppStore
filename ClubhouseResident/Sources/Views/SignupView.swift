@@ -1,5 +1,4 @@
 import SwiftUI
-import AuthenticationServices
 
 struct SignupView: View {
     @Environment(\.dismiss) private var dismiss
@@ -13,8 +12,6 @@ struct SignupView: View {
     @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
     @AppStorage("residentNeighborhoodName") private var residentNeighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
-    @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
-    @AppStorage("residentAppleUserId") private var residentAppleUserId = ""
 
     @State private var firstName = ""
     @State private var lastName = ""
@@ -90,8 +87,6 @@ struct SignupView: View {
         switch currentStep {
         case .welcomeChoice:
             return "Create your resident account with a guided signup flow."
-        case .appleWelcome:
-            return "You’re almost done — let’s finish your resident profile."
         default:
             return "Answer one quick question at a time."
         }
@@ -110,11 +105,7 @@ struct SignupView: View {
     }
 
     private var progressSteps: [SignupStep] {
-        if residentSignupProvider == "apple" {
-            return [.phone, .address, .inviteCode]
-        } else {
-            return [.firstName, .lastName, .phone, .address, .inviteCode]
-        }
+        [.firstName, .lastName, .phone, .address, .inviteCode]
     }
 
     private var progressIndex: Int {
@@ -127,9 +118,6 @@ struct SignupView: View {
         switch currentStep {
         case .welcomeChoice:
             welcomeChoiceCard
-
-        case .appleWelcome:
-            appleWelcomeCard
 
         case .firstName:
             questionCard(
@@ -231,14 +219,12 @@ struct SignupView: View {
                 .font(.title.bold())
                 .foregroundStyle(.white)
 
-                Text("You can sign up with Apple for a faster experience, or continue with the full step-by-step flow.")
+                Text("Continue with the full step-by-step flow.")
                 .foregroundStyle(.white.opacity(0.76))
                 .multilineTextAlignment(.center)
             }
 
             Button {
-                residentSignupProvider = "email"
-                residentAppleUserId = ""
                 errorMessage = ""
                 goTo(.firstName, focus: .firstName)
             } label: {
@@ -257,8 +243,6 @@ struct SignupView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18))
                 .shadow(color: .cyan.opacity(0.4), radius: 10)
             }
-
-            appleSignupButton
         }
         .padding(24)
         .frame(maxWidth: .infinity)
@@ -268,71 +252,6 @@ struct SignupView: View {
             RoundedRectangle(cornerRadius: 28)
             .stroke(.cyan.opacity(0.45), lineWidth: 1)
         )
-    }
-
-    private var appleWelcomeCard: some View {
-        VStack(spacing: 22) {
-            VStack(spacing: 10) {
-                Text("Welcome, \(fullDisplayName)!")
-                .font(.title.bold())
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-
-                Text("Your Apple sign in is connected. Now let’s finish your resident account.")
-                .foregroundStyle(.white.opacity(0.76))
-                .multilineTextAlignment(.center)
-            }
-
-            Button {
-                errorMessage = ""
-                goTo(.phone, focus: .phone)
-            } label: {
-                Text("Continue")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    LinearGradient(
-                        colors: [.cyan, .purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-                .shadow(color: .cyan.opacity(0.4), radius: 10)
-            }
-
-            Button {
-                errorMessage = ""
-                residentSignupProvider = "email"
-                residentAppleUserId = ""
-                goTo(.firstName, focus: .firstName)
-            } label: {
-                Text("Use manual signup instead")
-                .foregroundStyle(.cyan)
-                .font(.subheadline.weight(.semibold))
-            }
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity)
-        .background(.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28)
-            .stroke(.cyan.opacity(0.45), lineWidth: 1)
-        )
-    }
-
-    private var appleSignupButton: some View {
-        SignInWithAppleButton(.signUp) { request in
-            request.requestedScopes = [.fullName, .email]
-        } onCompletion: { result in
-            handleAppleSignInResult(result)
-        }
-        .signInWithAppleButtonStyle(.white)
-        .frame(height: 56)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
     private func questionCard(
@@ -485,11 +404,7 @@ struct SignupView: View {
             goTo(.firstName, focus: .firstName)
 
         case .phone:
-            if residentSignupProvider == "apple" {
-                goTo(.appleWelcome)
-            } else {
-                goTo(.lastName, focus: .lastName)
-            }
+            goTo(.lastName, focus: .lastName)
 
         case .address:
             goTo(.phone, focus: .phone)
@@ -497,62 +412,11 @@ struct SignupView: View {
         case .inviteCode:
             goTo(.address, focus: .address)
 
-        case .welcomeChoice, .appleWelcome:
+        case .welcomeChoice:
             break
         }
     }
 
-    private func handleAppleCredential(_ credential: ASAuthorizationAppleIDCredential) {
-        errorMessage = ""
-
-        residentSignupProvider = "apple"
-        residentAppleUserId = credential.user
-
-        let givenName = credential.fullName?.givenName ?? ""
-        let familyName = credential.fullName?.familyName ?? ""
-
-        if !givenName.isEmpty {
-            firstName = givenName
-        }
-
-        if !familyName.isEmpty {
-            lastName = familyName
-        }
-
-        if firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            goTo(.firstName, focus: .firstName)
-            errorMessage = "Apple Sign In successful. Let’s finish your details."
-            return
-        }
-
-        if lastName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            goTo(.lastName, focus: .lastName)
-            errorMessage = "Apple Sign In successful. Let’s finish your details."
-            return
-        }
-
-        goTo(.appleWelcome)
-    }
-    private func handleAppleSignInResult(_ result: Result<ASAuthorization, Error>) {
-        hideKeyboard()
-
-        switch result {
-        case .success(let authResults):
-            guard let credential = authResults.credential as? ASAuthorizationAppleIDCredential else {
-                errorMessage = "Could not read Apple sign in information."
-                return
-            }
-
-            handleAppleCredential(credential)
-
-        case .failure(let error):
-            if let authError = error as? ASAuthorizationError {
-                errorMessage = "Apple Sign In failed. Code: \(authError.code.rawValue)"
-            } else {
-                errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
-            }
-        }
-    }
     private func submitSignup() {
         errorMessage = ""
 
@@ -616,10 +480,6 @@ struct SignupView: View {
                         displayAreaName = resident.display_area_name ?? ""
                         residentNeighborhoodName = resident.neighborhood_name ?? ""
 
-                        if residentSignupProvider != "apple" {
-                            residentSignupProvider = "email"
-                        }
-
                         residentIsSignedUp = true
                         dismiss()
                     } else {
@@ -646,7 +506,6 @@ struct SignupView: View {
 
 private enum SignupStep: Equatable {
     case welcomeChoice
-    case appleWelcome
     case firstName
     case lastName
     case phone
@@ -656,7 +515,6 @@ private enum SignupStep: Equatable {
     var id: String {
         switch self {
         case .welcomeChoice: return "welcomeChoice"
-        case .appleWelcome: return "appleWelcome"
         case .firstName: return "firstName"
         case .lastName: return "lastName"
         case .phone: return "phone"
@@ -667,7 +525,7 @@ private enum SignupStep: Equatable {
 
     var showsProgress: Bool {
         switch self {
-        case .welcomeChoice, .appleWelcome:
+        case .welcomeChoice:
             return false
         default:
             return true
@@ -676,7 +534,7 @@ private enum SignupStep: Equatable {
 
     var canGoBack: Bool {
         switch self {
-        case .welcomeChoice, .appleWelcome:
+        case .welcomeChoice:
             return false
         default:
             return true
@@ -711,4 +569,3 @@ struct ResidentAccount: Codable {
     let approval_status: String
     let sms_verified: Bool
 }
-
