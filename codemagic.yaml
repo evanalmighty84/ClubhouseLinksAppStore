@@ -1,6 +1,6 @@
 workflows:
-  clubhouse-resident:
-    name: Clubhouse Resident App
+  clubhouse-links:
+    name: Clubhouse Links App
 
     integrations:
       app_store_connect: Codemagic
