@@ -1,6 +1,8 @@
 import SwiftUI
 import MapKit
 
+// MARK: - Apple Maps Address Autocomplete
+
 final class AddressAutocomplete: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
     @Published var suggestions: [MKLocalSearchCompletion] = []
     @Published var errorMessage = ""
@@ -53,6 +55,8 @@ final class AddressAutocomplete: NSObject, ObservableObject, MKLocalSearchComple
     }
 }
 
+// MARK: - Signup View
+
 struct SignupView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -72,10 +76,17 @@ struct SignupView: View {
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var phone = ""
+    @State private var verificationCode = ""
+    @State private var verifiedPhone = ""
     @State private var address = ""
     @State private var neighborhoodCode = ""
+
     @State private var errorMessage = ""
+    @State private var verificationMessage = ""
+
     @State private var isLoading = false
+    @State private var isSendingVerification = false
+    @State private var isCheckingVerification = false
     @State private var isSelectingAddress = false
 
     @State private var currentStep: SignupStep = .welcomeChoice
@@ -83,6 +94,12 @@ struct SignupView: View {
 
     private let signupURL =
     "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/signup"
+
+    private let sendVerificationURL =
+    "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/send-verification"
+
+    private let checkVerificationURL =
+    "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/check-verification"
 
     private let animatedTransition: AnyTransition =
     .asymmetric(
@@ -129,6 +146,8 @@ struct SignupView: View {
         .navigationTitle("Sign Up")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    // MARK: - Header
 
     private var headerSection: some View {
         VStack(spacing: 10) {
@@ -184,6 +203,7 @@ struct SignupView: View {
             .firstName,
             .lastName,
             .phone,
+            .verifyPhone,
             .address,
             .inviteCode
         ]
@@ -198,6 +218,8 @@ struct SignupView: View {
 
         return index
     }
+
+    // MARK: - Steps
 
     @ViewBuilder
     private var currentStepView: some View {
@@ -215,15 +237,16 @@ struct SignupView: View {
                 keyboardType: .default,
                 buttonTitle: "Next",
                 onNext: {
-                    guard !firstName
-                    .trimmingCharacters(
+                    let trimmedName = firstName.trimmingCharacters(
                         in: .whitespacesAndNewlines
                     )
-                    .isEmpty else {
+
+                    guard !trimmedName.isEmpty else {
                         errorMessage = "Please enter your first name."
                         return
                     }
 
+                    firstName = trimmedName
                     errorMessage = ""
                     goTo(.lastName, focus: .lastName)
                 }
@@ -239,15 +262,16 @@ struct SignupView: View {
                 keyboardType: .default,
                 buttonTitle: "Next",
                 onNext: {
-                    guard !lastName
-                    .trimmingCharacters(
+                    let trimmedName = lastName.trimmingCharacters(
                         in: .whitespacesAndNewlines
                     )
-                    .isEmpty else {
+
+                    guard !trimmedName.isEmpty else {
                         errorMessage = "Please enter your last name."
                         return
                     }
 
+                    lastName = trimmedName
                     errorMessage = ""
                     goTo(.phone, focus: .phone)
                 }
@@ -255,34 +279,36 @@ struct SignupView: View {
 
         case .phone:
             questionCard(
-                question: "What’s your phone number?",
-                subtitle: "This helps verify your account and personalize your local experience.",
-                placeholder: "Enter Phone Number",
+                question: "What’s your mobile number?",
+                subtitle: "We’ll text you a one-time verification code to secure your account.",
+                placeholder: "Enter Mobile Number",
                 text: $phone,
                 field: .phone,
                 keyboardType: .phonePad,
-                buttonTitle: "Next",
+                buttonTitle: phoneButtonTitle,
                 onNext: {
-                    guard !phone
-                    .trimmingCharacters(
-                        in: .whitespacesAndNewlines
-                    )
-                    .isEmpty else {
-                        errorMessage = "Please enter your phone number."
-                        return
+                    if isPhoneVerifiedForCurrentNumber {
+                        errorMessage = ""
+                        goTo(.address, focus: .address)
+                    } else {
+                        sendVerificationCode()
                     }
-
-                    errorMessage = ""
-                    goTo(.address, focus: .address)
-                }
+                },
+                isPrimaryDisabled: isSendingVerification
             )
+            .onChange(of: phone) { _ in
+                handlePhoneNumberChange()
+            }
+
+        case .verifyPhone:
+            phoneVerificationCard
 
         case .address:
             addressAutocompleteCard
 
         case .inviteCode:
             questionCard(
-                question: "Do you have an invite code?",
+                question: "What’s your invite code?",
                 subtitle: "Enter a code shared by a participating community or local business.",
                 placeholder: "Enter Invite Code",
                 text: $neighborhoodCode,
@@ -299,6 +325,8 @@ struct SignupView: View {
         }
     }
 
+    // MARK: - Welcome Card
+
     private var welcomeChoiceCard: some View {
         VStack(spacing: 20) {
             VStack(spacing: 10) {
@@ -313,45 +341,156 @@ struct SignupView: View {
                 .multilineTextAlignment(.center)
             }
 
-            Button {
+            primaryButton(
+                title: "Start Step-by-Step Signup",
+                disabled: false
+            ) {
                 errorMessage = ""
                 goTo(.firstName, focus: .firstName)
-            } label: {
-                Text("Start Step-by-Step Signup")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    LinearGradient(
-                        colors: [.cyan, .purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .foregroundStyle(.white)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 18)
-                )
-                .shadow(
-                    color: .cyan.opacity(0.4),
-                    radius: 10
-                )
             }
         }
         .padding(24)
         .frame(maxWidth: .infinity)
         .background(.white.opacity(0.08))
-        .clipShape(
-            RoundedRectangle(cornerRadius: 28)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: 28))
         .overlay(
             RoundedRectangle(cornerRadius: 28)
-            .stroke(
-                .cyan.opacity(0.45),
-                lineWidth: 1
-            )
+            .stroke(.cyan.opacity(0.45), lineWidth: 1)
         )
     }
+
+    // MARK: - Phone Verification Card
+
+    private var phoneVerificationCard: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Button {
+                    verificationCode = ""
+                    verificationMessage = ""
+                    errorMessage = ""
+                    goTo(.phone, focus: .phone)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .foregroundStyle(.cyan)
+                    .font(.subheadline.bold())
+                }
+
+                Spacer()
+            }
+
+            VStack(spacing: 10) {
+                Text("Enter your verification code")
+                .font(.title.bold())
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+
+                Text(
+                    "We sent a six-digit code to \(formattedPhoneForDisplay)."
+                )
+                .foregroundStyle(.white.opacity(0.75))
+                .multilineTextAlignment(.center)
+                .font(.subheadline)
+            }
+
+            TextField(
+                "Verification Code",
+                text: $verificationCode
+            )
+            .font(.title2)
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .frame(height: 72)
+            .background(
+                LinearGradient(
+                    colors: [
+                        .white.opacity(0.08),
+                        .purple.opacity(0.10)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                .stroke(
+                    .cyan.opacity(0.65),
+                    lineWidth: 1.5
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .keyboardType(.numberPad)
+            .textContentType(.oneTimeCode)
+            .focused(
+                $focusedField,
+                equals: .verificationCode
+            )
+            .onChange(of: verificationCode) { newValue in
+                verificationCode = String(
+                    newValue
+                    .filter(\.isNumber)
+                    .prefix(6)
+                )
+            }
+
+            if !verificationMessage.isEmpty {
+                Text(verificationMessage)
+                .font(.caption)
+                .foregroundStyle(
+                    isPhoneVerifiedForCurrentNumber
+                    ? .green
+                    : .white.opacity(0.72)
+                )
+                .multilineTextAlignment(.center)
+            }
+
+            primaryButton(
+                title: isCheckingVerification
+                ? "Verifying..."
+                : "Verify and Continue",
+                disabled:
+                isCheckingVerification ||
+                verificationCode.count != 6
+            ) {
+                checkVerificationCode()
+            }
+
+            Button {
+                sendVerificationCode(isResend: true)
+            } label: {
+                Text(
+                    isSendingVerification
+                    ? "Sending..."
+                    : "Send a new code"
+                )
+                .foregroundStyle(.cyan)
+                .font(.subheadline.bold())
+            }
+            .disabled(isSendingVerification)
+            .opacity(isSendingVerification ? 0.6 : 1)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
+        .background(.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 28))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28)
+            .stroke(.cyan.opacity(0.45), lineWidth: 1)
+        )
+        .onAppear {
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + 0.35
+            ) {
+                focusedField = .verificationCode
+            }
+        }
+    }
+
+    // MARK: - Address Card
 
     private var addressAutocompleteCard: some View {
         VStack(spacing: 20) {
@@ -411,9 +550,7 @@ struct SignupView: View {
                     lineWidth: 1.5
                 )
             )
-            .clipShape(
-                RoundedRectangle(cornerRadius: 22)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 22))
             .keyboardType(.default)
             .textInputAutocapitalization(.words)
             .textContentType(.fullStreetAddress)
@@ -440,91 +577,14 @@ struct SignupView: View {
             }
 
             if !addressAutocomplete.suggestions.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(
-                        Array(
-                            addressAutocomplete
-                            .suggestions
-                            .enumerated()
-                        ),
-                        id: \.offset
-                    ) { index, suggestion in
-                        Button {
-                            selectAddressSuggestion(suggestion)
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(
-                                    systemName: "mappin.and.ellipse"
-                                )
-                                .foregroundStyle(.cyan)
-
-                                VStack(
-                                    alignment: .leading,
-                                    spacing: 4
-                                ) {
-                                    Text(suggestion.title)
-                                    .font(.headline)
-                                    .foregroundStyle(.white)
-                                    .multilineTextAlignment(.leading)
-
-                                    if !suggestion.subtitle.isEmpty {
-                                        Text(suggestion.subtitle)
-                                        .font(.caption)
-                                        .foregroundStyle(
-                                            .white.opacity(0.65)
-                                        )
-                                        .multilineTextAlignment(
-                                            .leading
-                                        )
-                                    }
-                                }
-
-                                Spacer()
-
-                                Image(
-                                    systemName: "chevron.right"
-                                )
-                                .foregroundStyle(
-                                    .white.opacity(0.45)
-                                )
-                            }
-                            .frame(
-                                maxWidth: .infinity,
-                                alignment: .leading
-                            )
-                            .padding()
-                        }
-                        .buttonStyle(.plain)
-
-                        if index <
-                        addressAutocomplete
-                        .suggestions
-                        .count - 1 {
-                            Divider()
-                            .overlay(
-                                .white.opacity(0.12)
-                            )
-                        }
-                    }
-                }
-                .background(
-                    .black.opacity(0.3)
-                )
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 18)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                    .stroke(
-                        .cyan.opacity(0.35),
-                        lineWidth: 1
-                    )
-                )
+                addressSuggestionsList
             }
 
-            Button {
-                let trimmedAddress =
-                address.trimmingCharacters(
+            primaryButton(
+                title: "Next",
+                disabled: false
+            ) {
+                let trimmedAddress = address.trimmingCharacters(
                     in: .whitespacesAndNewlines
                 )
 
@@ -539,40 +599,15 @@ struct SignupView: View {
                 hideKeyboard()
                 addressAutocomplete.clear()
                 goTo(.inviteCode, focus: .inviteCode)
-            } label: {
-                Text("Next")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    LinearGradient(
-                        colors: [.cyan, .purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .foregroundStyle(.white)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 18)
-                )
-                .shadow(
-                    color: .cyan.opacity(0.35),
-                    radius: 10
-                )
             }
         }
         .padding(24)
         .frame(maxWidth: .infinity)
         .background(.white.opacity(0.08))
-        .clipShape(
-            RoundedRectangle(cornerRadius: 28)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: 28))
         .overlay(
             RoundedRectangle(cornerRadius: 28)
-            .stroke(
-                .cyan.opacity(0.45),
-                lineWidth: 1
-            )
+            .stroke(.cyan.opacity(0.45), lineWidth: 1)
         )
         .onAppear {
             DispatchQueue.main.asyncAfter(
@@ -582,6 +617,77 @@ struct SignupView: View {
             }
         }
     }
+
+    private var addressSuggestionsList: some View {
+        VStack(spacing: 0) {
+            ForEach(
+                Array(
+                    addressAutocomplete
+                    .suggestions
+                    .enumerated()
+                ),
+                id: \.offset
+            ) { index, suggestion in
+                Button {
+                    selectAddressSuggestion(suggestion)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "mappin.and.ellipse")
+                        .foregroundStyle(.cyan)
+
+                        VStack(
+                            alignment: .leading,
+                            spacing: 4
+                        ) {
+                            Text(suggestion.title)
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.leading)
+
+                            if !suggestion.subtitle.isEmpty {
+                                Text(suggestion.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(
+                                    .white.opacity(0.65)
+                                )
+                                .multilineTextAlignment(.leading)
+                            }
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                        .foregroundStyle(
+                            .white.opacity(0.45)
+                        )
+                    }
+                    .frame(
+                        maxWidth: .infinity,
+                        alignment: .leading
+                    )
+                    .padding()
+                }
+                .buttonStyle(.plain)
+
+                if index <
+                addressAutocomplete.suggestions.count - 1 {
+                    Divider()
+                    .overlay(.white.opacity(0.12))
+                }
+            }
+        }
+        .background(.black.opacity(0.3))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+            .stroke(
+                .cyan.opacity(0.35),
+                lineWidth: 1
+            )
+        )
+    }
+
+    // MARK: - Shared Question Card
 
     private func questionCard(
     question: String,
@@ -634,49 +740,21 @@ struct SignupView: View {
                 equals: field
             )
 
-            Button {
+            primaryButton(
+                title: buttonTitle,
+                disabled: isPrimaryDisabled
+            ) {
                 hideKeyboard()
                 onNext()
-            } label: {
-                Text(buttonTitle)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    LinearGradient(
-                        colors: [.cyan, .purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .foregroundStyle(.white)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 18)
-                )
-                .shadow(
-                    color: .cyan.opacity(0.35),
-                    radius: 10
-                )
             }
-            .disabled(isPrimaryDisabled)
-            .opacity(
-                isPrimaryDisabled
-                ? 0.6
-                : 1
-            )
         }
         .padding(24)
         .frame(maxWidth: .infinity)
         .background(.white.opacity(0.08))
-        .clipShape(
-            RoundedRectangle(cornerRadius: 28)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: 28))
         .overlay(
             RoundedRectangle(cornerRadius: 28)
-            .stroke(
-                .cyan.opacity(0.45),
-                lineWidth: 1
-            )
+            .stroke(.cyan.opacity(0.45), lineWidth: 1)
         )
         .onAppear {
             DispatchQueue.main.asyncAfter(
@@ -718,9 +796,7 @@ struct SignupView: View {
                 lineWidth: 1.5
             )
         )
-        .clipShape(
-            RoundedRectangle(cornerRadius: 22)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: 22))
         .keyboardType(keyboardType)
         .textInputAutocapitalization(
             keyboardType == .default
@@ -729,6 +805,303 @@ struct SignupView: View {
         )
         .autocorrectionDisabled()
     }
+
+    private func primaryButton(
+    title: String,
+    disabled: Bool,
+    action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(
+                LinearGradient(
+                    colors: [.cyan, .purple],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .foregroundStyle(.white)
+            .clipShape(
+                RoundedRectangle(cornerRadius: 18)
+            )
+            .shadow(
+                color: .cyan.opacity(0.35),
+                radius: 10
+            )
+        }
+        .disabled(disabled)
+        .opacity(disabled ? 0.6 : 1)
+    }
+
+    // MARK: - Phone Helpers
+
+    private var normalizedPhone: String {
+        let trimmedPhone = phone.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        let digits = trimmedPhone.filter(\.isNumber)
+
+        if digits.count == 10 {
+            return "+1\(digits)"
+        }
+
+        if digits.count == 11 && digits.hasPrefix("1") {
+            return "+\(digits)"
+        }
+
+        if trimmedPhone.hasPrefix("+") && digits.count >= 10 {
+            return "+\(digits)"
+        }
+
+        return trimmedPhone
+    }
+
+    private var isValidPhoneNumber: Bool {
+        let digits = phone.filter(\.isNumber)
+
+        return digits.count == 10 ||
+        (digits.count == 11 && digits.hasPrefix("1"))
+    }
+
+    private var isPhoneVerifiedForCurrentNumber: Bool {
+        !verifiedPhone.isEmpty &&
+        verifiedPhone == normalizedPhone
+    }
+
+    private var phoneButtonTitle: String {
+        if isSendingVerification {
+            return "Sending..."
+        }
+
+        if isPhoneVerifiedForCurrentNumber {
+            return "Continue"
+        }
+
+        return "Send Verification Code"
+    }
+
+    private var formattedPhoneForDisplay: String {
+        var digits = phone.filter(\.isNumber)
+
+        if digits.count == 11 && digits.hasPrefix("1") {
+            digits.removeFirst()
+        }
+
+        guard digits.count == 10 else {
+            return phone
+        }
+
+        let areaCode = digits.prefix(3)
+        let prefix = digits.dropFirst(3).prefix(3)
+        let lineNumber = digits.suffix(4)
+
+        return "(\(areaCode)) \(prefix)-\(lineNumber)"
+    }
+
+    private func handlePhoneNumberChange() {
+        guard !verifiedPhone.isEmpty else {
+            return
+        }
+
+        guard normalizedPhone != verifiedPhone else {
+            return
+        }
+
+        verifiedPhone = ""
+        verificationCode = ""
+        verificationMessage = ""
+    }
+
+    // MARK: - Twilio Verification Requests
+
+    private func sendVerificationCode(
+    isResend: Bool = false
+    ) {
+        errorMessage = ""
+        verificationMessage = ""
+
+        guard isValidPhoneNumber else {
+            errorMessage =
+            "Please enter a valid 10-digit mobile phone number."
+            return
+        }
+
+        guard let url = URL(string: sendVerificationURL) else {
+            errorMessage = "Invalid verification URL."
+            return
+        }
+
+        isSendingVerification = true
+        verifiedPhone = ""
+        verificationCode = ""
+
+        let payload: [String: String] = [
+            "phone": normalizedPhone
+        ]
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+        request.httpBody = try? JSONSerialization.data(
+            withJSONObject: payload
+        )
+
+        URLSession.shared.dataTask(
+            with: request
+        ) { data, response, error in
+            DispatchQueue.main.async {
+                isSendingVerification = false
+
+                if let error {
+                    errorMessage = error.localizedDescription
+                    return
+                }
+
+                guard let data else {
+                    errorMessage =
+                    "No response from the verification server."
+                    return
+                }
+
+                let decoded = try? JSONDecoder().decode(
+                    VerificationResponse.self,
+                    from: data
+                )
+
+                if let httpResponse = response as? HTTPURLResponse,
+                !(200...299).contains(httpResponse.statusCode) {
+                    errorMessage =
+                    decoded?.error ??
+                    decoded?.message ??
+                    "We could not send the verification code."
+                    return
+                }
+
+                guard decoded?.success == true else {
+                    errorMessage =
+                    decoded?.error ??
+                    decoded?.message ??
+                    "We could not send the verification code."
+                    return
+                }
+
+                verificationMessage = isResend
+                ? "A new verification code was sent."
+                : "Verification code sent."
+
+                if isResend {
+                    focusedField = .verificationCode
+                } else {
+                    goTo(
+                        .verifyPhone,
+                        focus: .verificationCode
+                    )
+                }
+            }
+        }
+        .resume()
+    }
+
+    private func checkVerificationCode() {
+        errorMessage = ""
+        verificationMessage = ""
+
+        let trimmedCode = verificationCode.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard trimmedCode.count == 6 else {
+            errorMessage =
+            "Please enter the six-digit code sent to your phone."
+            return
+        }
+
+        guard let url = URL(string: checkVerificationURL) else {
+            errorMessage = "Invalid verification URL."
+            return
+        }
+
+        isCheckingVerification = true
+
+        let payload: [String: String] = [
+            "phone": normalizedPhone,
+            "code": trimmedCode
+        ]
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+        request.httpBody = try? JSONSerialization.data(
+            withJSONObject: payload
+        )
+
+        URLSession.shared.dataTask(
+            with: request
+        ) { data, response, error in
+            DispatchQueue.main.async {
+                isCheckingVerification = false
+
+                if let error {
+                    errorMessage = error.localizedDescription
+                    return
+                }
+
+                guard let data else {
+                    errorMessage =
+                    "No response from the verification server."
+                    return
+                }
+
+                let decoded = try? JSONDecoder().decode(
+                    VerificationResponse.self,
+                    from: data
+                )
+
+                if let httpResponse = response as? HTTPURLResponse,
+                !(200...299).contains(httpResponse.statusCode) {
+                    errorMessage =
+                    decoded?.error ??
+                    decoded?.message ??
+                    "That verification code is incorrect or expired."
+                    return
+                }
+
+                guard decoded?.success == true,
+                decoded?.verified == true else {
+                    verifiedPhone = ""
+                    errorMessage =
+                    decoded?.error ??
+                    decoded?.message ??
+                    "That verification code is incorrect or expired."
+                    return
+                }
+
+                verifiedPhone = normalizedPhone
+                verificationMessage =
+                "Your mobile number has been verified."
+                errorMessage = ""
+
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + 0.35
+                ) {
+                    goTo(.address, focus: .address)
+                }
+            }
+        }
+        .resume()
+    }
+
+    // MARK: - Address Selection
 
     private func selectAddressSuggestion(
     _ suggestion: MKLocalSearchCompletion
@@ -753,8 +1126,7 @@ struct SignupView: View {
                     return
                 }
 
-                guard let mapItem =
-                response?.mapItems.first else {
+                guard let mapItem = response?.mapItems.first else {
                     errorMessage =
                     "Unable to find that address."
                     return
@@ -762,8 +1134,7 @@ struct SignupView: View {
 
                 isSelectingAddress = true
 
-                if let formattedAddress =
-                mapItem.placemark.title,
+                if let formattedAddress = mapItem.placemark.title,
                 !formattedAddress.isEmpty {
                     address = formattedAddress
                 } else {
@@ -788,17 +1159,7 @@ struct SignupView: View {
         }
     }
 
-    private var fullDisplayName: String {
-        let combined =
-        "\(firstName.trimmingCharacters(in: .whitespacesAndNewlines)) \(lastName.trimmingCharacters(in: .whitespacesAndNewlines))"
-        .trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-
-        return combined.isEmpty
-        ? "Member"
-        : combined
-    }
+    // MARK: - Navigation
 
     private func goTo(
     _ step: SignupStep,
@@ -806,8 +1167,7 @@ struct SignupView: View {
     ) {
         hideKeyboard()
 
-        if currentStep == .address &&
-        step != .address {
+        if currentStep == .address && step != .address {
             addressAutocomplete.clear()
         }
 
@@ -836,61 +1196,46 @@ struct SignupView: View {
             goTo(.welcomeChoice)
 
         case .lastName:
-            goTo(
-                .firstName,
-                focus: .firstName
-            )
+            goTo(.firstName, focus: .firstName)
 
         case .phone:
-            goTo(
-                .lastName,
-                focus: .lastName
-            )
+            goTo(.lastName, focus: .lastName)
+
+        case .verifyPhone:
+            verificationCode = ""
+            verificationMessage = ""
+            goTo(.phone, focus: .phone)
 
         case .address:
             addressAutocomplete.clear()
-
-            goTo(
-                .phone,
-                focus: .phone
-            )
+            goTo(.phone, focus: .phone)
 
         case .inviteCode:
-            goTo(
-                .address,
-                focus: .address
-            )
+            goTo(.address, focus: .address)
 
         case .welcomeChoice:
             break
         }
     }
 
+    // MARK: - Final Signup
+
     private func submitSignup() {
         errorMessage = ""
 
-        let trimmedFirstName =
-        firstName.trimmingCharacters(
+        let trimmedFirstName = firstName.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
 
-        let trimmedLastName =
-        lastName.trimmingCharacters(
+        let trimmedLastName = lastName.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
 
-        let trimmedPhone =
-        phone.trimmingCharacters(
+        let trimmedAddress = address.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
 
-        let trimmedAddress =
-        address.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-
-        let trimmedCode =
-        neighborhoodCode
+        let trimmedCode = neighborhoodCode
         .uppercased()
         .trimmingCharacters(
             in: .whitespacesAndNewlines
@@ -898,10 +1243,18 @@ struct SignupView: View {
 
         guard !trimmedFirstName.isEmpty,
         !trimmedLastName.isEmpty,
-        !trimmedPhone.isEmpty,
+        !normalizedPhone.isEmpty,
         !trimmedAddress.isEmpty,
         !trimmedCode.isEmpty else {
             errorMessage = "Please complete all fields."
+            return
+        }
+
+        guard isPhoneVerifiedForCurrentNumber else {
+            errorMessage =
+            "Please verify your mobile number before creating your account."
+
+            goTo(.phone, focus: .phone)
             return
         }
 
@@ -915,89 +1268,76 @@ struct SignupView: View {
         let payload: [String: String] = [
             "first_name": trimmedFirstName,
             "last_name": trimmedLastName,
-            "phone": trimmedPhone,
+            "phone": normalizedPhone,
             "address": trimmedAddress,
             "invite_code": trimmedCode
         ]
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-
         request.setValue(
             "application/json",
             forHTTPHeaderField: "Content-Type"
         )
-
         request.httpBody = try? JSONSerialization.data(
             withJSONObject: payload
         )
 
         URLSession.shared.dataTask(
             with: request
-        ) { data, _, error in
+        ) { data, response, error in
             DispatchQueue.main.async {
                 isLoading = false
 
                 if let error {
-                    errorMessage =
-                    error.localizedDescription
+                    errorMessage = error.localizedDescription
                     return
                 }
 
                 guard let data else {
-                    errorMessage =
-                    "No response from server."
+                    errorMessage = "No response from server."
                     return
                 }
 
-                do {
-                    let decoded =
-                    try JSONDecoder().decode(
-                        SignupResponse.self,
-                        from: data
-                    )
+                let decoded = try? JSONDecoder().decode(
+                    SignupResponse.self,
+                    from: data
+                )
 
-                    if decoded.success == true,
-                    let resident = decoded.resident,
-                    let newResidentId =
-                    decoded.resident_id {
-
-                        residentId = newResidentId
-                        savedFirstName =
-                        resident.first_name
-                        savedLastName =
-                        resident.last_name
-                        savedPhone =
-                        resident.phone
-                        savedAddress =
-                        trimmedAddress
-                        residentApprovalStatus =
-                        resident.approval_status
-                        residentNeighborhoodId =
-                        resident.neighborhood_id ?? 0
-                        displayAreaName =
-                        resident.display_area_name ?? ""
-                        residentNeighborhoodName =
-                        resident.neighborhood_name ?? ""
-
-                        residentIsSignedUp = true
-                        dismiss()
-                    } else {
-                        errorMessage =
-                        decoded.error ??
-                        "Signup failed."
-                    }
-                } catch {
-                    let rawResponse =
-                    String(
-                        data: data,
-                        encoding: .utf8
-                    ) ??
-                    "Unreadable response"
-
-                    errorMessage = rawResponse
-                    print(rawResponse)
+                if let httpResponse = response as? HTTPURLResponse,
+                !(200...299).contains(httpResponse.statusCode) {
+                    errorMessage =
+                    decoded?.error ??
+                    decoded?.message ??
+                    "Signup failed."
+                    return
                 }
+
+                guard decoded?.success == true,
+                let resident = decoded?.resident,
+                let newResidentId = decoded?.resident_id else {
+                    errorMessage =
+                    decoded?.error ??
+                    decoded?.message ??
+                    "Signup failed."
+                    return
+                }
+
+                residentId = newResidentId
+                savedFirstName = resident.first_name
+                savedLastName = resident.last_name
+                savedPhone = resident.phone
+                savedAddress = trimmedAddress
+                residentApprovalStatus = resident.approval_status
+                residentNeighborhoodId =
+                resident.neighborhood_id ?? 0
+                displayAreaName =
+                resident.display_area_name ?? ""
+                residentNeighborhoodName =
+                resident.neighborhood_name ?? ""
+
+                residentIsSignedUp = true
+                dismiss()
             }
         }
         .resume()
@@ -1005,9 +1345,7 @@ struct SignupView: View {
 
     private func hideKeyboard() {
         UIApplication.shared.sendAction(
-            #selector(
-            UIResponder.resignFirstResponder
-            ),
+            #selector(UIResponder.resignFirstResponder),
             to: nil,
             from: nil,
             for: nil
@@ -1015,11 +1353,14 @@ struct SignupView: View {
     }
 }
 
+// MARK: - Signup Steps
+
 private enum SignupStep: Equatable {
     case welcomeChoice
     case firstName
     case lastName
     case phone
+    case verifyPhone
     case address
     case inviteCode
 
@@ -1037,6 +1378,9 @@ private enum SignupStep: Equatable {
         case .phone:
             return "phone"
 
+        case .verifyPhone:
+            return "verifyPhone"
+
         case .address:
             return "address"
 
@@ -1046,23 +1390,11 @@ private enum SignupStep: Equatable {
     }
 
     var showsProgress: Bool {
-        switch self {
-        case .welcomeChoice:
-            return false
-
-        default:
-            return true
-        }
+        self != .welcomeChoice
     }
 
     var canGoBack: Bool {
-        switch self {
-        case .welcomeChoice:
-            return false
-
-        default:
-            return true
-        }
+        self != .welcomeChoice
     }
 }
 
@@ -1070,8 +1402,20 @@ private enum SignupField: Hashable {
     case firstName
     case lastName
     case phone
+    case verificationCode
     case address
     case inviteCode
+}
+
+// MARK: - API Models
+
+struct VerificationResponse: Codable {
+    let success: Bool?
+    let verified: Bool?
+    let status: String?
+    let phone: String?
+    let message: String?
+    let error: String?
 }
 
 struct SignupResponse: Codable {
