@@ -219,7 +219,7 @@ struct SignupView: View {
         return index
     }
 
-    // MARK: - Steps
+    // MARK: - Signup Steps
 
     @ViewBuilder
     private var currentStepView: some View {
@@ -308,21 +308,33 @@ struct SignupView: View {
 
         case .inviteCode:
             questionCard(
-                question: "What’s your invite code?",
-                subtitle: "Enter a code shared by a participating community or local business.",
-                placeholder: "Enter Invite Code",
+                question: "Do you have an invite code?",
+                subtitle: "Optional. Enter a code from a participating community or local business, or continue without one.",
+                placeholder: "Invite Code (Optional)",
                 text: $neighborhoodCode,
                 field: .inviteCode,
                 keyboardType: .default,
-                buttonTitle: isLoading
-                ? "Creating..."
-                : "Create Account",
+                buttonTitle: inviteCodeButtonTitle,
                 onNext: {
                     submitSignup()
                 },
                 isPrimaryDisabled: isLoading
             )
         }
+    }
+
+    private var inviteCodeButtonTitle: String {
+        if isLoading {
+            return "Creating..."
+        }
+
+        let trimmedCode = neighborhoodCode.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        return trimmedCode.isEmpty
+        ? "Skip & Create Account"
+        : "Create Account"
     }
 
     // MARK: - Welcome Card
@@ -359,7 +371,7 @@ struct SignupView: View {
         )
     }
 
-    // MARK: - Phone Verification Card
+    // MARK: - Phone Verification
 
     private var phoneVerificationCard: some View {
         VStack(spacing: 20) {
@@ -687,7 +699,7 @@ struct SignupView: View {
         )
     }
 
-    // MARK: - Shared Question Card
+    // MARK: - Shared Components
 
     private func questionCard(
     question: String,
@@ -1244,9 +1256,8 @@ struct SignupView: View {
         guard !trimmedFirstName.isEmpty,
         !trimmedLastName.isEmpty,
         !normalizedPhone.isEmpty,
-        !trimmedAddress.isEmpty,
-        !trimmedCode.isEmpty else {
-            errorMessage = "Please complete all fields."
+        !trimmedAddress.isEmpty else {
+            errorMessage = "Please complete all required fields."
             return
         }
 
@@ -1265,13 +1276,16 @@ struct SignupView: View {
 
         isLoading = true
 
-        let payload: [String: String] = [
+        var payload: [String: String] = [
             "first_name": trimmedFirstName,
             "last_name": trimmedLastName,
             "phone": normalizedPhone,
-            "address": trimmedAddress,
-            "invite_code": trimmedCode
+            "address": trimmedAddress
         ]
+
+        if !trimmedCode.isEmpty {
+            payload["invite_code"] = trimmedCode
+        }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
