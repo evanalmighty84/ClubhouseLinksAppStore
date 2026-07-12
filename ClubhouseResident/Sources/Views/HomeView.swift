@@ -28,11 +28,11 @@ struct HomeView: View {
                         .font(.largeTitle.bold())
                         .foregroundStyle(.white)
 
-                        Text("Resident Portal")
+                        Text("Home Services")
                         .font(.title2.bold())
                         .foregroundStyle(.cyan)
 
-                        Text("Stay connected with your HOA community")
+                        Text("Your Local Home Service Referral Network")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.7))
                     }
@@ -40,7 +40,7 @@ struct HomeView: View {
                     NavigationLink {
                         SignupView()
                     } label: {
-                        Text("Create Resident Account")
+                        Text("Create Account")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -58,27 +58,23 @@ struct HomeView: View {
 
                     NeonCard(
                         title: "Community Updates",
-                        text: "View HOA events, announcements, board updates, and neighborhood news."
+                        text: "View HOA block party events,neighborhood announcements and neighborhood news."
                     )
 
                     NeonCard(
                         title: "Submit Vendor Requests",
-                        text: "Send maintenance requests, report issues, or contact management."
+                        text: "Send maintenance requests, report issues, or contact local reputable vendors."
                     )
 
-                    NeonCard(
-                        title: "Book Amenities",
-                        text: "Contact your HOA to access clubhouse, pool, tennis court, and community information."
-                    )
 
                     NeonCard(
                         title: "View Vendors",
-                        text: "Browse trusted local contractors, home service providers, and HOA-approved businesses."
+                        text: "Browse trusted local contractors, home service providers, and HOA or neigborhood-reviewed  businesses."
                     )
 
                     NeonCard(
                         title: "Upcoming Events",
-                        text: "See social events, meetings, holiday celebrations, and HOA activities."
+                        text: "See social events, meetings, holiday celebrations, and other activities."
                     )
 
                     Spacer(minLength: 90)
