@@ -20,20 +20,30 @@ struct ResidentCompletedProject: Codable, Identifiable {
     let photo_rejection_reason: String?
 }
 
+struct NeighborVendorProject: Identifiable {
+    let id: String
+    let vendorId: Int
+    let vendorName: String
+    let service: String
+    let personId: Int
+    let firstName: String?
+    let address: String?
+    let distanceMiles: Double?
+    let finishedPhotoUrl: String?
+}
+
 struct ResidentProfileView: View {
 
-        @AppStorage("residentId") private var residentId = 0
-        @AppStorage("residentFirstName") private var firstName = ""
-        @AppStorage("residentLastName") private var lastName = ""
-        @AppStorage("residentPhone") private var phone = ""
-        @AppStorage("residentAddress") private var address = ""
-        @AppStorage("residentNeighborhoodName") private var neighborhoodName = ""
-        @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
-        @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
-        @AppStorage("residentAppleUserId") private var residentAppleUserId = ""
-        @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
-
-
+    @AppStorage("residentId") private var residentId = 0
+    @AppStorage("residentFirstName") private var firstName = ""
+    @AppStorage("residentLastName") private var lastName = ""
+    @AppStorage("residentPhone") private var phone = ""
+    @AppStorage("residentAddress") private var address = ""
+    @AppStorage("residentNeighborhoodName") private var neighborhoodName = ""
+    @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
+    @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
+    @AppStorage("residentAppleUserId") private var residentAppleUserId = ""
+    @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
 
     @State private var isProfileFlipped = false
 
@@ -51,6 +61,12 @@ struct ResidentProfileView: View {
     @State private var completedProjectsLoading = false
     @State private var completedProjectsError = ""
 
+    @State private var selectedNeighborService = "All Services"
+    @State private var selectedNeighborVendor = "All Vendors"
+    @State private var neighborVendors: [Vendor] = []
+    @State private var isLoadingNeighborVendors = false
+    @State private var neighborVendorsLoaded = false
+
     private let fallbackServiceOptions = [
         "Painting",
         "Pool Service",
@@ -62,6 +78,91 @@ struct ResidentProfileView: View {
         "General Contractor"
     ]
 
+    private var neighborProjects: [NeighborVendorProject] {
+        neighborVendors
+        .flatMap { vendor in
+            let people = vendor.signed_up_people ?? []
+
+            return people.compactMap { person -> NeighborVendorProject? in
+                guard let photoUrl = person.finished_photo_url,
+                !photoUrl.isEmpty else {
+                    return nil
+                }
+
+                if let status = person.photo_approval_status,
+                !status.isEmpty,
+                status != "approved" {
+                    return nil
+                }
+
+                return NeighborVendorProject(
+                    id: "\(vendor.id)-\(person.id)",
+                    vendorId: vendor.id,
+                    vendorName: vendor.company_name,
+                    service: vendor.category ?? "Home Service",
+                    personId: person.id,
+                    firstName: person.first_name,
+                    address: person.address,
+                    distanceMiles: person.distance_miles,
+                    finishedPhotoUrl: photoUrl
+                )
+            }
+        }
+        .sorted {
+            ($0.distanceMiles ?? 9999) < ($1.distanceMiles ?? 9999)
+        }
+    }
+
+    private var neighborServiceOptions: [String] {
+        let services = neighborProjects.map { $0.service }.filter { !$0.isEmpty }
+        return ["All Services"] + Array(Set(services)).sorted()
+    }
+
+    private var neighborVendorOptions: [String] {
+        let vendors = neighborProjects.map { $0.vendorName }.filter { !$0.isEmpty }
+        return ["All Vendors"] + Array(Set(vendors)).sorted()
+    }
+
+    private var filteredNeighborProjects: [NeighborVendorProject] {
+        neighborProjects
+        .filter { project in
+            let serviceMatches = selectedNeighborService == "All Services" || project.service == selectedNeighborService
+            let vendorMatches = selectedNeighborVendor == "All Vendors" || project.vendorName == selectedNeighborVendor
+            return serviceMatches && vendorMatches
+        }
+        .prefix(10)
+        .map { $0 }
+    }
+
+    private var accountSettingsBadge: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [.cyan.opacity(0.35), .purple.opacity(0.35)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 58, height: 58)
+                .overlay(
+                    Circle()
+                    .stroke(.cyan.opacity(0.8), lineWidth: 1.5)
+                )
+                .shadow(color: .cyan.opacity(0.35), radius: 10)
+
+                Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(.white)
+            }
+
+            Text("Account Settings")
+            .font(.caption.bold())
+            .foregroundStyle(.white.opacity(0.88))
+        }
+    }
+
     private var serviceOptions: [String] {
         let vendorCategories = vendorOptions
         .compactMap { $0.category?.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -70,6 +171,7 @@ struct ResidentProfileView: View {
         let combined = vendorCategories + fallbackServiceOptions
         return Array(Set(combined)).sorted()
     }
+
     private var profileAreaName: String {
         let cleanNeighborhood = neighborhoodName.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanDisplayArea = displayAreaName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -95,7 +197,14 @@ struct ResidentProfileView: View {
                     .foregroundStyle(.white)
                     .padding(.top, 12)
 
+                    Text("Clubhouse Links is your portal to everyday home service contractors who have been used and trusted by your neighbors.")
+                    .font(.subheadline.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.82))
+                    .padding(.horizontal, 12)
+
                     flippableProfileCard
+
                     NavigationLink {
                         VendorDirectoryView()
                     } label: {
@@ -130,18 +239,21 @@ struct ResidentProfileView: View {
                         text: "Request a contractor, service provider, or local business recommendation."
                     )
 
-/*                    Button {
+                    /*
+                    Button {
                         residentIsSignedUp = false
                     } label: {
                         Text("Sign Out")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(.white.opacity(0.08))
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.white.opacity(0.08))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
                     }
-                    .padding(.top, 4)*/
+                    .padding(.top, 4)
+                    */
+
                     /*
                     Button {
                         let keysToRemove = [
@@ -216,7 +328,7 @@ struct ResidentProfileView: View {
                 }
             }
 
-            profileCardBack
+            neighborProjectsCardBack
             .opacity(isProfileFlipped ? 1 : 0)
             .rotation3DEffect(
                 .degrees(isProfileFlipped ? 0 : -180),
@@ -243,7 +355,7 @@ struct ResidentProfileView: View {
                         profileProjectSlide(project)
                     }
                 }
-                .frame(height: 315)
+                .frame(height: 520)
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: completedProjects.isEmpty ? .never : .automatic))
             }
         }
@@ -258,6 +370,7 @@ struct ResidentProfileView: View {
         VStack(spacing: 10) {
 
             AppleLookAroundCard(address: address)
+            .frame(height: 110)
 
             residentInfoHeader
 
@@ -278,7 +391,7 @@ struct ResidentProfileView: View {
             .font(.caption.bold())
             .foregroundStyle(.cyan.opacity(0.95))
 
-            Text("Tap to submit a completed project")
+            Text("Tap to see neighbor projects near you")
             .font(.caption.bold())
             .foregroundStyle(
                 LinearGradient(
@@ -343,7 +456,7 @@ struct ResidentProfileView: View {
             .background(.black.opacity(0.20))
             .clipShape(RoundedRectangle(cornerRadius: 18))
 
-            Text("Tap profile card to submit another project")
+            Text("Tap profile card to see neighbor projects")
             .font(.caption.bold())
             .foregroundStyle(.cyan.opacity(0.9))
         }
@@ -351,30 +464,36 @@ struct ResidentProfileView: View {
     }
 
     private var residentInfoHeader: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 14) {
+            lookAroundPreview
+
+            accountSettingsBadge
+            .padding(.top, 8)
+
             Text("\(firstName) \(lastName)")
-            .font(.title.bold())
+            .font(.system(size: 34, weight: .bold))
             .foregroundStyle(.white)
 
             Text(profileAreaName)
-            .font(.headline)
+            .font(.title2.bold())
             .foregroundStyle(.cyan)
 
             Text(phone)
-            .foregroundStyle(.white.opacity(0.75))
+            .font(.title3)
+            .foregroundStyle(.white.opacity(0.82))
 
             Text(address)
-            .foregroundStyle(.white.opacity(0.75))
+            .font(.title3)
             .multilineTextAlignment(.center)
+            .foregroundStyle(.white.opacity(0.72))
         }
     }
 
-    private var profileCardBack: some View {
+    private var neighborProjectsCardBack: some View {
         VStack(alignment: .leading, spacing: 18) {
-
             HStack {
-                Text("Submit New Project")
-                .font(.title3.bold())
+                Text("Neighbor Projects")
+                .font(.title.bold())
                 .foregroundStyle(.white)
 
                 Spacer()
@@ -388,163 +507,167 @@ struct ResidentProfileView: View {
                         Image(systemName: "arrow.uturn.left.circle.fill")
                         Text("Back")
                     }
-                    .font(.subheadline.bold())
+                    .font(.headline)
                     .foregroundStyle(.cyan)
                 }
             }
 
-            Text("Select the service, choose the vendor, and upload a finished project photo. Photos are reviewed before they appear publicly.")
+            Text("See trusted home service contractors used by neighbors near you.")
             .font(.subheadline)
-            .foregroundStyle(.white.opacity(0.7))
+            .foregroundStyle(.white.opacity(0.72))
+            .lineSpacing(3)
 
-            VStack(alignment: .leading, spacing: 8) {
+            AppleLookAroundCard(address: address)
+            .frame(height: 140)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+
+            VStack(alignment: .leading, spacing: 10) {
                 Text("Service")
-                .font(.caption.bold())
+                .font(.headline)
                 .foregroundStyle(.cyan)
 
-                Picker("Service", selection: $selectedService) {
-                    ForEach(serviceOptions, id: \.self) { service in
+                Picker("Service", selection: $selectedNeighborService) {
+                    ForEach(neighborServiceOptions, id: \.self) { service in
                         Text(service).tag(service)
                     }
                 }
                 .pickerStyle(.menu)
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.black.opacity(0.25))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .tint(.cyan)
+                .background(.black.opacity(0.22))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("Vendor")
-                .font(.caption.bold())
-                .foregroundStyle(.cyan)
-
-                if vendorOptionsLoading {
-                    ProgressView()
-                    .tint(.cyan)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(.black.opacity(0.25))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                } else {
-                    Picker("Vendor", selection: $selectedVendorId) {
-                        Text("Select Vendor").tag(0)
-
-                        ForEach(filteredVendorOptions) { vendor in
-                            Text(vendor.company_name).tag(vendor.id)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.black.opacity(0.25))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .tint(.cyan)
-                }
-
-                if !vendorOptionsError.isEmpty {
-                    Text(vendorOptionsError)
-                    .font(.caption)
-                    .foregroundStyle(.red.opacity(0.9))
-                }
-            }
-
-            PhotosPicker(
-                selection: $selectedPhotoItem,
-                matching: .images,
-                photoLibrary: .shared()
-            ) {
-                HStack(spacing: 10) {
-                    Image(systemName: "photo.badge.plus")
-                    .font(.title2)
-
-                    Text(selectedImage == nil ? "Upload Finished Photo" : "Change Photo")
-                    .font(.headline)
-
-                    Spacer()
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(
-                    LinearGradient(
-                        colors: [.cyan, .purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-            }
-
-            if let selectedImage {
-                Image(uiImage: selectedImage)
-                .resizable()
-                .scaledToFill()
-                .frame(height: 160)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-            }
-
-            Button {
-                submitSelectedProject()
-            } label: {
-                Text("Submit for Review")
                 .font(.headline)
-                .frame(maxWidth: .infinity)
+                .foregroundStyle(.cyan)
+
+                Picker("Vendor", selection: $selectedNeighborVendor) {
+                    ForEach(neighborVendorOptions, id: \.self) { vendor in
+                        Text(vendor).tag(vendor)
+                    }
+                }
+                .pickerStyle(.menu)
                 .padding()
-                .background((selectedImage == nil || selectedVendorId == 0) ? .white.opacity(0.12) : .white.opacity(0.18))
-                .foregroundStyle((selectedImage == nil || selectedVendorId == 0) ? .white.opacity(0.45) : .white)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.black.opacity(0.22))
                 .clipShape(RoundedRectangle(cornerRadius: 18))
             }
-            .disabled(selectedImage == nil || selectedVendorId == 0)
 
-            if !uploadMessage.isEmpty {
-                Text(uploadMessage)
-                .font(.caption)
-                .foregroundStyle(.cyan)
-                .multilineTextAlignment(.center)
+            if isLoadingNeighborVendors {
+                ProgressView()
+                .tint(.cyan)
                 .frame(maxWidth: .infinity)
-            }
-
-            Button {
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
-                    isProfileFlipped = false
+                .padding(.vertical, 18)
+            } else if filteredNeighborProjects.isEmpty {
+                Text("No nearby completed projects found yet.")
+                .font(.headline)
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+            } else {
+                TabView {
+                    ForEach(filteredNeighborProjects) { project in
+                        neighborProjectSlide(project)
+                        .padding(.horizontal, 4)
+                    }
                 }
-            } label: {
-                Text("Back to Profile")
-                .font(.caption.bold())
-                .foregroundStyle(.cyan.opacity(0.95))
-                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .tabViewStyle(.page(indexDisplayMode: .automatic))
             }
-            .padding(.top, 2)
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .frame(maxWidth: .infinity)
         .background(
             LinearGradient(
-                colors: [
-                    .black.opacity(0.32),
-                    .purple.opacity(0.30),
-                    .cyan.opacity(0.12)
-                ],
+                colors: [.cyan.opacity(0.13), .purple.opacity(0.24)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
+        .clipShape(RoundedRectangle(cornerRadius: 28))
         .overlay(
-            RoundedRectangle(cornerRadius: 24)
-            .stroke(
-                LinearGradient(
-                    colors: [.cyan, .purple],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 1.5
-            )
+            RoundedRectangle(cornerRadius: 28)
+            .stroke(.cyan.opacity(0.55), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .cyan.opacity(0.25), radius: 12)
+        .onAppear {
+            loadNeighborVendorsIfNeeded()
+        }
+    }
+
+    private func neighborProjectSlide(_ project: NeighborVendorProject) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                if let imageUrl = project.finishedPhotoUrl,
+                !imageUrl.isEmpty,
+                let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { image in
+                        image
+                        .resizable()
+                        .scaledToFill()
+                    } placeholder: {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14)
+                            .fill(.black.opacity(0.25))
+                            ProgressView()
+                            .tint(.cyan)
+                        }
+                    }
+                    .frame(width: 110, height: 90)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                        .fill(.black.opacity(0.25))
+
+                        Image(systemName: "house.and.flag.fill")
+                        .font(.title)
+                        .foregroundStyle(.cyan)
+                    }
+                    .frame(width: 110, height: 90)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(project.vendorName)
+                    .font(.headline.bold())
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                    Text(project.service)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.cyan)
+
+                    if let firstName = project.firstName, !firstName.isEmpty {
+                        Text("\(firstName) used this contractor")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(1)
+                    }
+
+                    if let distance = project.distanceMiles {
+                        Text(String(format: "%.1f miles away", distance))
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.65))
+                    }
+                }
+            }
+
+            if let address = project.address, !address.isEmpty {
+                Text(address)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.55))
+                .lineLimit(1)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.black.opacity(0.18))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+            .stroke(.purple.opacity(0.45), lineWidth: 1)
+        )
     }
 
     private var filteredVendorOptions: [Vendor] {
@@ -705,6 +828,52 @@ struct ResidentProfileView: View {
         }.resume()
     }
 
+    private func loadNeighborVendorsIfNeeded() {
+        guard !neighborVendorsLoaded else { return }
+        guard residentId > 0 else { return }
+
+        neighborVendorsLoaded = true
+        isLoadingNeighborVendors = true
+
+        let urlString = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/vendors/\(residentId)"
+
+        guard let url = URL(string: urlString) else {
+            isLoadingNeighborVendors = false
+            return
+        }
+
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            DispatchQueue.main.async {
+                isLoadingNeighborVendors = false
+            }
+
+            if let error = error {
+                print("neighbor vendor error:", error.localizedDescription)
+                return
+            }
+
+            guard let data = data else {
+                print("No neighbor vendor data found.")
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(VendorResponse.self, from: data)
+
+                DispatchQueue.main.async {
+                    if decoded.success == true {
+                        neighborVendors = decoded.vendors ?? []
+                    } else {
+                        print(decoded.error ?? "Could not load neighbor vendors.")
+                    }
+                }
+            } catch {
+                print("neighbor vendor decode error:", error)
+                print(String(data: data, encoding: .utf8) ?? "")
+            }
+        }.resume()
+    }
+
     private func syncServiceToSelectedVendor() {
         guard let vendor = selectedVendor() else {
             return
@@ -762,8 +931,6 @@ struct AppleLookAroundCard: View {
     @State private var lookAroundScene: MKLookAroundScene?
     @State private var isLoading = true
     @State private var didFail = false
-
-
 
     var body: some View {
         ZStack {
@@ -826,7 +993,7 @@ struct AppleLookAroundCard: View {
         }
 
         do {
-            let placemarks = try await CLGeocoder().geocodeAddressString("\(address), Plano, TX")
+            let placemarks = try await CLGeocoder().geocodeAddressString(address)
 
             guard let coordinate = placemarks.first?.location?.coordinate else {
                 await MainActor.run {
