@@ -465,8 +465,6 @@ struct ResidentProfileView: View {
 
     private var residentInfoHeader: some View {
         VStack(spacing: 14) {
-            lookAroundPreview
-
             accountSettingsBadge
             .padding(.top, 8)
 
