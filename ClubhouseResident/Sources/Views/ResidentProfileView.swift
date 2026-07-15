@@ -322,11 +322,6 @@ struct ResidentProfileView: View {
                 .degrees(isProfileFlipped ? 180 : 0),
                 axis: (x: 0, y: 1, z: 0)
             )
-            .onTapGesture {
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
-                    isProfileFlipped = true
-                }
-            }
 
             neighborProjectsCardBack
             .opacity(isProfileFlipped ? 1 : 0)
@@ -371,6 +366,10 @@ struct ResidentProfileView: View {
 
             AppleLookAroundCard(address: address)
             .frame(height: 110)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                flipToNeighborProjects()
+            }
 
             residentInfoHeader
 
@@ -404,8 +403,18 @@ struct ResidentProfileView: View {
                     endPoint: .trailing
                 )
             )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                flipToNeighborProjects()
+            }
+
         }
         .frame(maxWidth: .infinity)
+    }
+    private func flipToNeighborProjects() {
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+            isProfileFlipped = true
+        }
     }
 
     private func profileProjectSlide(_ project: ResidentCompletedProject) -> some View {
