@@ -66,6 +66,7 @@ struct ResidentProfileView: View {
     @State private var neighborVendors: [Vendor] = []
     @State private var isLoadingNeighborVendors = false
     @State private var neighborVendorsLoaded = false
+    @State private var showingAccountSettings = false
 
     private let fallbackServiceOptions = [
         "Painting",
@@ -312,7 +313,9 @@ struct ResidentProfileView: View {
         .onChange(of: selectedVendorId) { _ in
             syncServiceToSelectedVendor()
         }
-    }
+        .sheet(isPresented: $showingAccountSettings) {
+            AccountSettingsView()
+        }
 
     private var flippableProfileCard: some View {
         ZStack {
@@ -474,8 +477,13 @@ struct ResidentProfileView: View {
 
     private var residentInfoHeader: some View {
         VStack(spacing: 14) {
-            accountSettingsBadge
-            .padding(.top, 8)
+            Button {
+                showingAccountSettings = true
+            } label: {
+                accountSettingsBadge
+                .padding(.top, 8)
+            }
+            .buttonStyle(.plain)
 
             Text("\(firstName) \(lastName)")
             .font(.system(size: 34, weight: .bold))
