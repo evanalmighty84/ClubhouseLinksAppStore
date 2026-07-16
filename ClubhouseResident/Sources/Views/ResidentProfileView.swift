@@ -312,10 +312,10 @@ struct ResidentProfileView: View {
         }
         .onChange(of: selectedVendorId) { _ in
             syncServiceToSelectedVendor()
-        }
-        .sheet(isPresented: $showingAccountSettings) {
+        }.sheet(isPresented: $showingAccountSettings) {
             AccountSettingsView()
         }
+    }
 
     private var flippableProfileCard: some View {
         ZStack {
