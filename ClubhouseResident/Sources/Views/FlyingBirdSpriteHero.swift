@@ -17,7 +17,7 @@ struct FlyingBirdSpriteHeroView: View {
                     endPoint: .bottomTrailing
                 )
             )
-            .frame(width: 170, height: 170)
+            .frame(width: 250, height: 250)
             .blur(radius: 10)
 
             AnimatedSpriteView(
@@ -27,24 +27,25 @@ struct FlyingBirdSpriteHeroView: View {
                 frameCount: 16,
                 frameDuration: 0.09
             )
-            .frame(height: 145)
+            .frame(width: 250, height: 230)
             .offset(
-                x: hasFlownIn ? 0 : -320,
-                y: isFloating ? -7 : 7
+                x: hasFlownIn ? 0 : -340,
+                y: isFloating ? -8 : 8
             )
-            .scaleEffect(hasFlownIn ? 1.0 : 0.65)
+            .scaleEffect(hasFlownIn ? 1.0 : 0.55)
             .opacity(hasFlownIn ? 1 : 0)
-            .shadow(color: .cyan.opacity(0.45), radius: 14)
+            .shadow(color: .cyan.opacity(0.45), radius: 18)
         }
-        .frame(height: 155)
+        .frame(height: 260)
         .frame(maxWidth: .infinity)
+        .clipped(false)
         .onAppear {
-            withAnimation(.spring(response: 0.85, dampingFraction: 0.72)) {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.72)) {
                 hasFlownIn = true
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
-                withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: true)) {
+                withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
                     isFloating = true
                 }
             }

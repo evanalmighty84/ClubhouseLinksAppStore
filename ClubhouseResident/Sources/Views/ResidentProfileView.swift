@@ -353,7 +353,7 @@ struct ResidentProfileView: View {
                         profileProjectSlide(project)
                     }
                 }
-                .frame(height: 520)
+                .frame(height: 760)
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: completedProjects.isEmpty ? .never : .automatic))
             }
         }
