@@ -38,7 +38,6 @@ struct FlyingBirdSpriteHeroView: View {
         }
         .frame(height: 260)
         .frame(maxWidth: .infinity)
-        .clipped(false)
         .onAppear {
             withAnimation(.spring(response: 0.8, dampingFraction: 0.72)) {
                 hasFlownIn = true
