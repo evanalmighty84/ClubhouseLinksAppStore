@@ -22,14 +22,14 @@ struct ResidentPortalView: View {
                 RequestView()
             }
             .tabItem {
-                Label("Request", systemImage: "paperplane.fill")
+                Label("Submit Job", systemImage: "paperplane.fill")
             }
 
             NavigationStack {
                 ContactView()
             }
             .tabItem {
-                Label("Submit Job", systemImage: "phone.fill")
+                Label("Request Service", systemImage: "phone.fill")
             }
         }
         .tint(.cyan)

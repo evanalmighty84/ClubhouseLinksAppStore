@@ -366,7 +366,7 @@ struct ResidentProfileView: View {
 
     private var profileInfoOnlySlide: some View {
         VStack(spacing: 10) {
-
+            FlyingBirdSpriteHeroView()
             AppleLookAroundCard(address: address)
             .frame(height: 110)
             .contentShape(Rectangle())
