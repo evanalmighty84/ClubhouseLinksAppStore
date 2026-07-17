@@ -8,20 +8,24 @@ struct AnimatedSpriteView: View {
     let frameCount: Int
     let frameDuration: Double
 
+    @State private var frames: [UIImage] = []
     @State private var currentFrame = 0
     @State private var timer: Timer?
 
     var body: some View {
         Group {
-            if let frameImage = currentFrameImage {
-                Image(uiImage: frameImage)
+            if frames.indices.contains(currentFrame) {
+                Image(uiImage: frames[currentFrame])
                 .resizable()
                 .scaledToFit()
             } else {
-                Color.clear
+                Image("clubhouse_bird_wave_sprite_512")
+                .resizable()
+                .scaledToFit()
             }
         }
         .onAppear {
+            loadFrames()
             startAnimation()
         }
         .onDisappear {
@@ -29,37 +33,52 @@ struct AnimatedSpriteView: View {
         }
     }
 
-    private var currentFrameImage: UIImage? {
+    private func loadFrames() {
+        guard frames.isEmpty else { return }
+
         guard let spriteSheet = UIImage(named: imageName),
         let cgImage = spriteSheet.cgImage else {
-            return nil
+            print("Could not load sprite sheet named:", imageName)
+            return
         }
 
         let frameWidth = cgImage.width / columns
         let frameHeight = cgImage.height / rows
 
-        let column = currentFrame % columns
-        let row = currentFrame / columns
+        var loadedFrames: [UIImage] = []
 
-        let cropRect = CGRect(
-            x: column * frameWidth,
-            y: row * frameHeight,
-            width: frameWidth,
-            height: frameHeight
-        )
+        for index in 0..<frameCount {
+            let column = index % columns
+            let row = index / columns
 
-        guard let croppedCGImage = cgImage.cropping(to: cropRect) else {
-            return nil
+            let cropRect = CGRect(
+                x: column * frameWidth,
+                y: row * frameHeight,
+                width: frameWidth,
+                height: frameHeight
+            )
+
+            if let cropped = cgImage.cropping(to: cropRect) {
+                loadedFrames.append(
+                    UIImage(
+                        cgImage: cropped,
+                        scale: spriteSheet.scale,
+                        orientation: spriteSheet.imageOrientation
+                    )
+                )
+            }
         }
 
-        return UIImage(cgImage: croppedCGImage)
+        frames = loadedFrames
+        print("Loaded sprite frames:", loadedFrames.count)
     }
 
     private func startAnimation() {
         stopAnimation()
 
         timer = Timer.scheduledTimer(withTimeInterval: frameDuration, repeats: true) { _ in
-            currentFrame = (currentFrame + 1) % frameCount
+            guard !frames.isEmpty else { return }
+            currentFrame = (currentFrame + 1) % frames.count
         }
     }
 

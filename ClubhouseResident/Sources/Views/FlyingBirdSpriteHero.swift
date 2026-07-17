@@ -21,9 +21,13 @@ struct FlyingBirdSpriteHeroView: View {
             .frame(width: 250, height: 250)
             .blur(radius: 10)
 
-            Image("clubhouse_bird_wave_sprite_512")
-            .resizable()
-            .scaledToFit()
+            AnimatedSpriteView(
+                imageName: "clubhouse_bird_flying_sprite",
+                columns: 4,
+                rows: 4,
+                frameCount: 16,
+                frameDuration: 0.09
+            )
             .frame(height: 230)
             .offset(
                 x: hasFlownIn ? 0 : -340,
