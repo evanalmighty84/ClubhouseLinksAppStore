@@ -528,13 +528,15 @@ struct SignupView: View {
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
 
-                Text(
-                    "We’ll use this to personalize nearby communities and local services."
-                )
+                HStack(spacing: 4) {
+                    Text("We’ll use this to personalize nearby communities and local services.")
+
+                    Text("* Optional")
+                    .foregroundStyle(.yellow)
+                }
                 .foregroundStyle(.white.opacity(0.75))
                 .multilineTextAlignment(.center)
                 .font(.subheadline)
-            }
 
             TextField(
                 "Start typing your address",
@@ -596,22 +598,25 @@ struct SignupView: View {
                 title: "Next",
                 disabled: false
             ) {
-                let trimmedAddress = address.trimmingCharacters(
-                    in: .whitespacesAndNewlines
-                )
-
-                guard !trimmedAddress.isEmpty else {
-                    errorMessage =
-                    "Please select or enter your address."
-                    return
-                }
-
-                address = trimmedAddress
-                errorMessage = ""
-                hideKeyboard()
-                addressAutocomplete.clear()
-                goTo(.inviteCode, focus: .inviteCode)
+                continueFromAddress()
             }
+
+            Button {
+                skipAddress()
+            } label: {
+                Text("Skip for Now")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(.white.opacity(0.08))
+                .foregroundStyle(.white.opacity(0.86))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                    .stroke(.white.opacity(0.14), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
         }
         .padding(24)
         .frame(maxWidth: .infinity)
@@ -776,7 +781,25 @@ struct SignupView: View {
             }
         }
     }
+    private func continueFromAddress() {
+        let trimmedAddress = address.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
 
+        address = trimmedAddress
+        errorMessage = ""
+        hideKeyboard()
+        addressAutocomplete.clear()
+        goTo(.inviteCode, focus: .inviteCode)
+    }
+
+    private func skipAddress() {
+        address = ""
+        errorMessage = ""
+        hideKeyboard()
+        addressAutocomplete.clear()
+        goTo(.inviteCode, focus: .inviteCode)
+    }
     private func neonTextField(
     placeholder: String,
     text: Binding<String>,
@@ -1255,8 +1278,7 @@ struct SignupView: View {
 
         guard !trimmedFirstName.isEmpty,
         !trimmedLastName.isEmpty,
-        !normalizedPhone.isEmpty,
-        !trimmedAddress.isEmpty else {
+        !normalizedPhone.isEmpty else {
             errorMessage = "Please complete all required fields."
             return
         }

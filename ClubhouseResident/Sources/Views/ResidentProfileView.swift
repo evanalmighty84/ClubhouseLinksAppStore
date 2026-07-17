@@ -367,11 +367,15 @@ struct ResidentProfileView: View {
     private var profileInfoOnlySlide: some View {
         VStack(spacing: 10) {
             FlyingBirdSpriteHeroView()
-            AppleLookAroundCard(address: address)
-            .frame(height: 110)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                flipToNeighborProjects()
+            if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                missingAddressCard
+            } else {
+                AppleLookAroundCard(address: address)
+                .frame(height: 110)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    flipToNeighborProjects()
+                }
             }
 
             residentInfoHeader
@@ -474,7 +478,52 @@ struct ResidentProfileView: View {
         }
         .frame(maxWidth: .infinity)
     }
+    private var missingAddressCard: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "location.magnifyingglass")
+            .font(.system(size: 34, weight: .semibold))
+            .foregroundStyle(.cyan)
 
+            Text("What’s your address?")
+            .font(.title3.bold())
+            .foregroundStyle(.white)
+
+            Text("Add your address to unlock Look Around, nearby vendors, and neighbor projects around you.")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white.opacity(0.72))
+            .multilineTextAlignment(.center)
+            .lineSpacing(3)
+
+            Button {
+                showingAccountSettings = true
+            } label: {
+                Text("Add Address")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    LinearGradient(
+                        colors: [.cyan, .purple],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: .cyan.opacity(0.35), radius: 10)
+            }
+            .padding(.top, 4)
+        }
+        .padding()
+        .frame(height: 210)
+        .frame(maxWidth: .infinity)
+        .background(.black.opacity(0.22))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+            .stroke(.cyan.opacity(0.55), lineWidth: 1)
+        )
+    }
     private var residentInfoHeader: some View {
         VStack(spacing: 14) {
             Button {
