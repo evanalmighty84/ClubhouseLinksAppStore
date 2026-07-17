@@ -29,7 +29,7 @@ struct ResidentPortalView: View {
                 ContactView()
             }
             .tabItem {
-                Label("Contact", systemImage: "phone.fill")
+                Label("Submit Job", systemImage: "phone.fill")
             }
         }
         .tint(.cyan)

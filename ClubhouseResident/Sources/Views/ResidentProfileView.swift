@@ -203,7 +203,7 @@ struct ResidentProfileView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.82))
                     .padding(.horizontal, 12)
-
+                    FlyingBirdHeroView()
                     flippableProfileCard
 
                     NavigationLink {
@@ -389,7 +389,7 @@ struct ResidentProfileView: View {
                 .padding(.top, 4)
             }
 
-            Text("Swipe to see completed projects")
+            Text("Swipe to see your completed projects")
             .font(.caption.bold())
             .foregroundStyle(.cyan.opacity(0.95))
 
