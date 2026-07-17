@@ -5,12 +5,12 @@ struct FlyingBirdSpriteHeroView: View {
     @State private var isFloating = false
     @State private var currentFrame = 0
 
-    private let frames = (0...15).map {
+    private let frames = (0..<8).map {
         String(format: "clubhouse_bird_flying_%02d", $0)
     }
 
     private let timer = Timer.publish(
-        every: 0.09,
+        every: 0.36,
         on: .main,
         in: .common
     ).autoconnect()
