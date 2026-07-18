@@ -203,8 +203,13 @@ struct ResidentProfileView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.82))
                     .padding(.horizontal, 12)
-                    FlyingBirdHeroView()
-                    flippableProfileCard
+                    if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        flippableProfileCard
+                        startNextProjectCard
+                    } else {
+                        startNextProjectCard
+                        flippableProfileCard
+                    }
 
                     NavigationLink {
                         VendorDirectoryView()
