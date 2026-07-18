@@ -308,9 +308,9 @@ struct SignupView: View {
 
         case .inviteCode:
             questionCard(
-                question: "Do you have an invite code?",
-                subtitle: "Optional. Enter a code from a participating community or local business, or continue without one.",
-                placeholder: "Invite Code (Optional)",
+                question: "What’s your invite code?",
+                subtitle: "Enter the code from your community, contractor, or local service provider.",
+                placeholder: "Invite Code",
                 text: $neighborhoodCode,
                 field: .inviteCode,
                 keyboardType: .default,
@@ -328,13 +328,7 @@ struct SignupView: View {
             return "Creating..."
         }
 
-        let trimmedCode = neighborhoodCode.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-
-        return trimmedCode.isEmpty
-        ? "Skip & Create Account"
-        : "Create Account"
+        return "Create Account"
     }
 
     // MARK: - Welcome Card
@@ -1280,8 +1274,9 @@ struct SignupView: View {
 
         guard !trimmedFirstName.isEmpty,
         !trimmedLastName.isEmpty,
-        !normalizedPhone.isEmpty else {
-            errorMessage = "Please complete all required fields."
+        !normalizedPhone.isEmpty,
+        !trimmedCode.isEmpty else {
+            errorMessage = "Please enter your invite code."
             return
         }
 
