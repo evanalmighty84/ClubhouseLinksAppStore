@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import MapKit
+import UIKit
 
 struct CompletedProjectsResponse: Codable {
     let success: Bool?
@@ -67,6 +68,12 @@ struct ResidentProfileView: View {
     @State private var isLoadingNeighborVendors = false
     @State private var neighborVendorsLoaded = false
     @State private var showingAccountSettings = false
+    @StateObject private var addressAutocomplete = AddressAutocomplete()
+
+    @State private var editableAddress = ""
+    @State private var isSelectingAddress = false
+    @State private var addressSaveMessage = ""
+    @State private var addressSaveError = ""
 
     private let fallbackServiceOptions = [
         "Painting",
@@ -113,7 +120,14 @@ struct ResidentProfileView: View {
             ($0.distanceMiles ?? 9999) < ($1.distanceMiles ?? 9999)
         }
     }
-
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
     private var neighborServiceOptions: [String] {
         let services = neighborProjects.map { $0.service }.filter { !$0.isEmpty }
         return ["All Services"] + Array(Set(services)).sorted()
@@ -484,13 +498,13 @@ struct ResidentProfileView: View {
         .frame(maxWidth: .infinity)
     }
     private var missingAddressCard: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Image(systemName: "location.magnifyingglass")
-            .font(.system(size: 34, weight: .semibold))
+            .font(.system(size: 38, weight: .semibold))
             .foregroundStyle(.cyan)
 
             Text("What’s your address?")
-            .font(.title3.bold())
+            .font(.title2.bold())
             .foregroundStyle(.white)
 
             Text("Add your address to unlock Look Around, nearby vendors, and neighbor projects around you.")
@@ -499,10 +513,90 @@ struct ResidentProfileView: View {
             .multilineTextAlignment(.center)
             .lineSpacing(3)
 
+            addressAutocompleteInput
+
+            if !addressSaveMessage.isEmpty {
+                Text(addressSaveMessage)
+                .font(.caption.bold())
+                .foregroundStyle(.green)
+                .multilineTextAlignment(.center)
+            }
+
+            if !addressSaveError.isEmpty {
+                Text(addressSaveError)
+                .font(.caption.bold())
+                .foregroundStyle(.orange)
+                .multilineTextAlignment(.center)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(.black.opacity(0.22))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+            .stroke(.cyan.opacity(0.55), lineWidth: 1)
+        )
+        .onAppear {
+            editableAddress = address
+        }
+    }
+    private var addressAutocompleteInput: some View {
+        VStack(spacing: 12) {
+            TextField(
+                "Start typing your address",
+                text: $editableAddress
+            )
+            .font(.headline)
+            .foregroundStyle(.white)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .frame(height: 58)
+            .background(
+                LinearGradient(
+                    colors: [
+                        .white.opacity(0.08),
+                        .purple.opacity(0.10)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                .stroke(.cyan.opacity(0.65), lineWidth: 1.5)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .keyboardType(.default)
+            .textInputAutocapitalization(.words)
+            .textContentType(.fullStreetAddress)
+            .autocorrectionDisabled()
+            .onChange(of: editableAddress) { newValue in
+                addressSaveMessage = ""
+                addressSaveError = ""
+
+                guard !isSelectingAddress else {
+                    return
+                }
+
+                addressAutocomplete.updateQuery(newValue)
+            }
+
+            if !addressAutocomplete.errorMessage.isEmpty {
+                Text("Address suggestions are temporarily unavailable. You can still enter your address manually.")
+                .foregroundStyle(.orange)
+                .font(.caption)
+                .multilineTextAlignment(.center)
+            }
+
+            if !addressAutocomplete.suggestions.isEmpty {
+                residentAddressSuggestionsList
+            }
+
             Button {
-                showingAccountSettings = true
+                saveManualAddress()
             } label: {
-                Text("Add Address")
+                Text("Save Address")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -517,17 +611,120 @@ struct ResidentProfileView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: .cyan.opacity(0.35), radius: 10)
             }
-            .padding(.top, 4)
         }
-        .padding()
-        .frame(height: 210)
-        .frame(maxWidth: .infinity)
-        .background(.black.opacity(0.22))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+    private var residentAddressSuggestionsList: some View {
+        VStack(spacing: 0) {
+            ForEach(
+                Array(addressAutocomplete.suggestions.enumerated()),
+                id: \.offset
+            ) { index, suggestion in
+                Button {
+                    selectResidentAddressSuggestion(suggestion)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "mappin.and.ellipse")
+                        .foregroundStyle(.cyan)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(suggestion.title)
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.leading)
+
+                            if !suggestion.subtitle.isEmpty {
+                                Text(suggestion.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.65))
+                                .multilineTextAlignment(.leading)
+                            }
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                        .foregroundStyle(.white.opacity(0.45))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                }
+                .buttonStyle(.plain)
+
+                if index < addressAutocomplete.suggestions.count - 1 {
+                    Divider()
+                    .overlay(.white.opacity(0.12))
+                }
+            }
+        }
+        .background(.black.opacity(0.3))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-            .stroke(.cyan.opacity(0.55), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18)
+            .stroke(.cyan.opacity(0.35), lineWidth: 1)
         )
+    }
+    private func selectResidentAddressSuggestion(
+    _ suggestion: MKLocalSearchCompletion
+    ) {
+        addressSaveMessage = ""
+        addressSaveError = ""
+        hideKeyboard()
+
+        let request = MKLocalSearch.Request(completion: suggestion)
+        request.resultTypes = .address
+
+        MKLocalSearch(request: request).start { response, error in
+            DispatchQueue.main.async {
+                if let error {
+                    addressSaveError = "Unable to verify address: \(error.localizedDescription)"
+                    return
+                }
+
+                guard let mapItem = response?.mapItems.first else {
+                    addressSaveError = "Unable to find that address."
+                    return
+                }
+
+                isSelectingAddress = true
+
+                if let formattedAddress = mapItem.placemark.title,
+                !formattedAddress.isEmpty {
+                    editableAddress = formattedAddress
+                } else {
+                    editableAddress = [
+                        suggestion.title,
+                        suggestion.subtitle
+                    ]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: ", ")
+                }
+
+                addressAutocomplete.clear()
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isSelectingAddress = false
+                    saveManualAddress()
+                }
+            }
+        }
+    }
+
+    private func saveManualAddress() {
+        let trimmedAddress = editableAddress.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard !trimmedAddress.isEmpty else {
+            addressSaveError = "Please enter your address."
+            return
+        }
+
+        address = trimmedAddress
+        addressAutocomplete.clear()
+        addressSaveError = ""
+        addressSaveMessage = "Address saved."
+
+        hideKeyboard()
     }
     private var residentInfoHeader: some View {
         VStack(spacing: 14) {
