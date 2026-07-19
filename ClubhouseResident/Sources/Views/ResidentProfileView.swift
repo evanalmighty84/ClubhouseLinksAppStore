@@ -205,9 +205,9 @@ struct ResidentProfileView: View {
                     .padding(.horizontal, 12)
                     if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         flippableProfileCard
-                        startNextProjectCard
+                        FlyingBirdHeroView()
                     } else {
-                        startNextProjectCard
+                        FlyingBirdHeroView()
                         flippableProfileCard
                     }
 
