@@ -720,11 +720,45 @@ struct ResidentProfileView: View {
         }
 
         address = trimmedAddress
+
+        if let areaFromAddress = displayAreaFromAddress(trimmedAddress) {
+            displayAreaName = areaFromAddress
+        } else {
+            displayAreaName = "Local Customer Area"
+        }
+
         addressAutocomplete.clear()
         addressSaveError = ""
         addressSaveMessage = "Address saved."
 
         hideKeyboard()
+    }
+    private func displayAreaFromAddress(_ address: String) -> String? {
+        let parts = address
+        .split(separator: ",")
+        .map {
+            String($0).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        guard parts.count >= 3 else {
+            return nil
+        }
+
+        let city = parts[1]
+
+        let stateZipPart = parts[2]
+        .split(separator: " ")
+        .map(String.init)
+
+        guard let state = stateZipPart.first else {
+            return nil
+        }
+
+        if city.isEmpty || state.isEmpty {
+            return nil
+        }
+
+        return "\(city), \(state)"
     }
     private var residentInfoHeader: some View {
         VStack(spacing: 14) {
