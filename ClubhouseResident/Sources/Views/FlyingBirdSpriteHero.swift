@@ -43,7 +43,7 @@ struct FlyingBirdSpriteHeroView: View {
             .opacity(hasFlownIn ? 1 : 0)
             .shadow(color: .cyan.opacity(0.45), radius: 18)
         }
-        .frame(height: 260)
+        .frame(height: 330)
         .frame(maxWidth: .infinity)
         .onReceive(timer) { _ in
             currentFrame = (currentFrame + 1) % frames.count

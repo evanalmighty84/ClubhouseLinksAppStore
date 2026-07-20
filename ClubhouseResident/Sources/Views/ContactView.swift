@@ -5,6 +5,7 @@ struct ContactView: View {
     @AppStorage("residentFirstName") private var firstName = ""
     @AppStorage("residentLastName") private var lastName = ""
     @AppStorage("residentPhone") private var phone = ""
+    @AppStorage("residentSelectedTab") private var selectedTab = "home"
 
     @State private var selectedService = "Painting"
     @State private var selectedVendorId = 0
@@ -279,10 +280,13 @@ struct ContactView: View {
             submitMessage = "Please enter a message."
             return
         }
-
         let vendorName = selectedVendor()?.company_name ?? "selected vendor"
 
         submitMessage = "Your request for \(vendorName) has been submitted."
         message = ""
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
+            selectedTab = "home"
+        }
     }
 }

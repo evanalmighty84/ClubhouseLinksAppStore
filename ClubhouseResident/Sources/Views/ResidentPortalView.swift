@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct ResidentPortalView: View {
+    @AppStorage("residentSelectedTab") private var selectedTab = "home"
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
 
             NavigationStack {
                 HomeView()
@@ -10,6 +12,7 @@ struct ResidentPortalView: View {
             .tabItem {
                 Label("Home", systemImage: "house.fill")
             }
+            .tag("home")
 
             NavigationStack {
                 EventsView()
@@ -17,6 +20,7 @@ struct ResidentPortalView: View {
             .tabItem {
                 Label("Events", systemImage: "calendar")
             }
+            .tag("events")
 
             NavigationStack {
                 RequestView()
@@ -24,6 +28,7 @@ struct ResidentPortalView: View {
             .tabItem {
                 Label("Submit Job", systemImage: "paperplane.fill")
             }
+            .tag("submit")
 
             NavigationStack {
                 ContactView()
@@ -31,6 +36,7 @@ struct ResidentPortalView: View {
             .tabItem {
                 Label("Request Service", systemImage: "phone.fill")
             }
+            .tag("contact")
         }
         .tint(.cyan)
     }

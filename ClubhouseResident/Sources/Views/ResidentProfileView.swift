@@ -86,6 +86,23 @@ struct ResidentProfileView: View {
         "General Contractor"
     ]
 
+    private var profileTopHeader: some View {
+        VStack(spacing: 12) {
+            Text("\(firstName) \(lastName)")
+            .font(.largeTitle.bold())
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .padding(.top, 12)
+
+            Button {
+                showingAccountSettings = true
+            } label: {
+                accountSettingsBadge
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     private var neighborProjects: [NeighborVendorProject] {
         neighborVendors
         .flatMap { vendor in
@@ -206,11 +223,7 @@ struct ResidentProfileView: View {
         NeonBackground {
             ScrollView {
                 VStack(spacing: 24) {
-
-                    Text("Resident Profile")
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(.white)
-                    .padding(.top, 12)
+                    profileTopHeader
 
                     Text("Clubhouse Links is your portal to everyday home service contractors who have been used and trusted by your neighbors.")
                     .font(.subheadline.weight(.semibold))
@@ -372,7 +385,7 @@ struct ResidentProfileView: View {
                         profileProjectSlide(project)
                     }
                 }
-                .frame(height: 760)
+                .frame(height: 820)
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: completedProjects.isEmpty ? .never : .automatic))
             }
         }
@@ -761,31 +774,10 @@ struct ResidentProfileView: View {
         return "\(city), \(state)"
     }
     private var residentInfoHeader: some View {
-        VStack(spacing: 14) {
-            Button {
-                showingAccountSettings = true
-            } label: {
-                accountSettingsBadge
-                .padding(.top, 8)
-            }
-            .buttonStyle(.plain)
-
-            Text("\(firstName) \(lastName)")
-            .font(.system(size: 34, weight: .bold))
-            .foregroundStyle(.white)
-
+        VStack(spacing: 8) {
             Text(profileAreaName)
             .font(.title2.bold())
             .foregroundStyle(.cyan)
-
-            Text(phone)
-            .font(.title3)
-            .foregroundStyle(.white.opacity(0.82))
-
-            Text(address)
-            .font(.title3)
-            .multilineTextAlignment(.center)
-            .foregroundStyle(.white.opacity(0.72))
         }
     }
 
