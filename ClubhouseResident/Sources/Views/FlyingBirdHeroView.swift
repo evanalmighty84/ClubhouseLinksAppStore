@@ -57,7 +57,7 @@ struct FlyingBirdHeroView: View {
                 .padding()
                 .background(
                     LinearGradient(
-                        colors: [.cyan, .orange],
+                        colors: [.purple, .orange],
                         startPoint: .leading,
                         endPoint: .trailing
                     )

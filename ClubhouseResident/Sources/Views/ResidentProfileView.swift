@@ -20,6 +20,21 @@ struct ResidentCompletedProject: Codable, Identifiable {
     let moderation_status: String?
     let photo_rejection_reason: String?
 }
+struct AddressUpdateResponse: Codable {
+    let success: Bool?
+    let resident: AddressUpdatedResident
+    let message: String?
+    let error: String?
+}
+
+struct AddressUpdatedResident: Codable {
+    let id: Int?
+    let address: String?
+    let display_area_name: String?
+    let latitude: Double?
+    let longitude: Double?
+    let generated_area_id: Int?
+}
 
 struct NeighborVendorProject: Identifiable {
     let id: String
@@ -222,7 +237,7 @@ struct ResidentProfileView: View {
     var body: some View {
         NeonBackground {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: 14) {
                     profileTopHeader
 
                     Text("Clubhouse Links is your portal to everyday home service contractors who have been used and trusted by your neighbors.")
@@ -732,6 +747,94 @@ struct ResidentProfileView: View {
             return
         }
 
+        addressSaveError = ""
+        addressSaveMessage = "Saving address..."
+
+        saveAddressToBackend(trimmedAddress)
+    }
+    private func saveAddressToBackend(_ trimmedAddress: String) {
+        guard residentId > 0 else {
+            saveAddressLocally(trimmedAddress)
+            return
+        }
+
+        let urlString = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/profile/\(residentId)/address"
+
+        guard let url = URL(string: urlString) else {
+            addressSaveError = "Invalid address update URL."
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let payload: [String: String] = [
+            "address": trimmedAddress
+        ]
+
+        do {
+            request.httpBody = try JSONSerialization.data(
+                withJSONObject: payload,
+                options: []
+            )
+        } catch {
+            addressSaveError = "Could not prepare address update."
+            return
+        }
+
+        URLSession.shared.dataTask(with: request) { data, _, error in
+            if let error {
+                DispatchQueue.main.async {
+                    addressSaveError = error.localizedDescription
+                }
+                return
+            }
+
+            guard let data else {
+                DispatchQueue.main.async {
+                    addressSaveError = "No response from server."
+                }
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(AddressUpdateResponse.self, from: data)
+
+                DispatchQueue.main.async {
+                    if decoded.success == true {
+                        address = decoded.resident.address ?? trimmedAddress
+                        displayAreaName =
+                        decoded.resident.display_area_name ??
+                        displayAreaFromAddress(trimmedAddress) ??
+                        "Local Customer Area"
+
+                        addressAutocomplete.clear()
+                        addressSaveError = ""
+                        addressSaveMessage = "Address saved."
+                        hideKeyboard()
+
+                        // Important: force nearby projects/vendors to reload
+                        neighborVendorsLoaded = false
+                        neighborVendors = []
+                        loadNeighborVendorsIfNeeded()
+                        loadVendorOptions()
+                    } else {
+                        addressSaveError = decoded.error ?? "Could not save address."
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    print("Address update decode error:", error)
+                    print(String(data: data, encoding: .utf8) ?? "")
+
+                    // Fallback so the UI still works
+                    saveAddressLocally(trimmedAddress)
+                }
+            }
+        }.resume()
+    }
+    private func saveAddressLocally(_ trimmedAddress: String) {
         address = trimmedAddress
 
         if let areaFromAddress = displayAreaFromAddress(trimmedAddress) {
@@ -742,8 +845,7 @@ struct ResidentProfileView: View {
 
         addressAutocomplete.clear()
         addressSaveError = ""
-        addressSaveMessage = "Address saved."
-
+        addressSaveMessage = "Address saved locally."
         hideKeyboard()
     }
     private func displayAreaFromAddress(_ address: String) -> String? {
