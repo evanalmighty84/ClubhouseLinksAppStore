@@ -276,6 +276,31 @@ struct RequestView: View {
             .stroke(.cyan.opacity(0.55), lineWidth: 1)
         )
     }
+    private func resizedImage(
+    _ image: UIImage,
+    maxDimension: CGFloat = 1400
+    ) -> UIImage {
+        let size = image.size
+
+        let largestSide = max(size.width, size.height)
+
+        guard largestSide > maxDimension else {
+            return image
+        }
+
+        let scale = maxDimension / largestSide
+
+        let newSize = CGSize(
+            width: size.width * scale,
+            height: size.height * scale
+        )
+
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+    }
 
     private func loadVendorOptions() {
         guard residentId > 0 else {
@@ -388,7 +413,12 @@ struct RequestView: View {
             return
         }
 
-        guard let imageData = projectImage.jpegData(compressionQuality: 0.82) else {
+        let uploadImage = resizedImage(
+            projectImage,
+            maxDimension: 1400
+        )
+
+        guard let imageData = uploadImage.jpegData(compressionQuality: 0.65) else {
             uploadMessage = "Could not prepare selected photo."
             return
         }
