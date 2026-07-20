@@ -1,6 +1,13 @@
 import SwiftUI
 import PhotosUI
 
+struct SubmitCompletedProjectResponse: Codable {
+    let success: Bool?
+    let project: ResidentCompletedProject?
+    let message: String?
+    let error: String?
+}
+
 struct RequestView: View {
     @AppStorage("residentId") private var residentId = 0
     @AppStorage("residentFirstName") private var firstName = ""
@@ -9,6 +16,7 @@ struct RequestView: View {
     @AppStorage("residentAddress") private var address = ""
     @AppStorage("residentNeighborhoodName") private var neighborhoodName = ""
     @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
+    @AppStorage("residentSelectedTab") private var selectedTab = "home"
 
     @State private var selectedService = "Painting"
     @State private var selectedVendorId = 0
@@ -365,19 +373,116 @@ struct RequestView: View {
     }
 
     private func submitSelectedProject() {
+        guard residentId > 0 else {
+            uploadMessage = "Resident profile not found."
+            return
+        }
+
         guard selectedVendorId > 0 else {
             uploadMessage = "Please select a vendor."
             return
         }
 
-        guard selectedImage != nil else {
+        guard let selectedImage else {
             uploadMessage = "Please select a finished project photo first."
             return
         }
 
-        let vendorName = selectedVendor()?.company_name ?? "selected vendor"
+        guard let imageData = selectedImage.jpegData(compressionQuality: 0.82) else {
+            uploadMessage = "Could not prepare selected photo."
+            return
+        }
 
-        uploadMessage = "Photo selected for \(vendorName). Backend upload is the next step."
+        let base64Image = imageData.base64EncodedString()
+        let imageDataUrl = "data:image/jpeg;base64,\(base64Image)"
+
+        let selectedCategory =
+        selectedVendor()?.category ??
+        selectedService
+
+        let payload: [String: Any] = [
+            "resident_id": residentId,
+            "vendor_id": selectedVendorId,
+            "category": selectedCategory,
+            "image_base64": imageDataUrl
+        ]
+
+        guard let url = URL(
+            string: "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/completed-projects"
+        ) else {
+            uploadMessage = "Invalid completed project URL."
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+
+        do {
+            request.httpBody = try JSONSerialization.data(
+                withJSONObject: payload,
+                options: []
+            )
+        } catch {
+            uploadMessage = "Could not prepare upload request."
+            return
+        }
+
+        uploadMessage = "Submitting project..."
+
+        URLSession.shared.dataTask(with: request) { data, _, error in
+            if let error {
+                DispatchQueue.main.async {
+                    uploadMessage = error.localizedDescription
+                }
+                return
+            }
+
+            guard let data else {
+                DispatchQueue.main.async {
+                    uploadMessage = "No response from server."
+                }
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(
+                    SubmitCompletedProjectResponse.self,
+                    from: data
+                )
+
+                DispatchQueue.main.async {
+                    if decoded.success == true {
+                        uploadMessage =
+                        decoded.message ??
+                        "Completed project submitted for review."
+
+                        selectedPhotoItem = nil
+                        selectedImage = nil
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                            selectedTab = "home"
+                        }
+                    } else {
+                        uploadMessage =
+                        decoded.error ??
+                        "Could not submit completed project."
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    uploadMessage =
+                    String(data: data, encoding: .utf8) ??
+                    "Could not decode submit response."
+                }
+
+                print("submit completed project decode error:", error)
+                print(String(data: data, encoding: .utf8) ?? "")
+            }
+        }.resume()
     }
 }
 

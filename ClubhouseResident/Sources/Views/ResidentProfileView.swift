@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 import MapKit
 import UIKit
 
@@ -56,22 +55,12 @@ struct ResidentProfileView: View {
     @AppStorage("residentPhone") private var phone = ""
     @AppStorage("residentAddress") private var address = ""
     @AppStorage("residentNeighborhoodName") private var neighborhoodName = ""
-    @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
-    @AppStorage("residentSignupProvider") private var residentSignupProvider = "email"
-    @AppStorage("residentAppleUserId") private var residentAppleUserId = ""
     @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
 
     @State private var isProfileFlipped = false
 
-    @State private var selectedService = "Painting"
-    @State private var selectedVendorId = 0
-    @State private var selectedPhotoItem: PhotosPickerItem?
-    @State private var selectedImage: UIImage?
-    @State private var uploadMessage = ""
 
-    @State private var vendorOptions: [Vendor] = []
-    @State private var vendorOptionsLoading = false
-    @State private var vendorOptionsError = ""
+
 
     @State private var completedProjects: [ResidentCompletedProject] = []
     @State private var completedProjectsLoading = false
@@ -90,16 +79,7 @@ struct ResidentProfileView: View {
     @State private var addressSaveMessage = ""
     @State private var addressSaveError = ""
 
-    private let fallbackServiceOptions = [
-        "Painting",
-        "Pool Service",
-        "Roofing",
-        "Realtor",
-        "Plumbing",
-        "Electrical",
-        "Landscaping",
-        "General Contractor"
-    ]
+
 
     private var profileTopHeader: some View {
         VStack(spacing: 12) {
@@ -210,14 +190,7 @@ struct ResidentProfileView: View {
         }
     }
 
-    private var serviceOptions: [String] {
-        let vendorCategories = vendorOptions
-        .compactMap { $0.category?.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .filter { !$0.isEmpty }
 
-        let combined = vendorCategories + fallbackServiceOptions
-        return Array(Set(combined)).sorted()
-    }
 
     private var profileAreaName: String {
         let cleanNeighborhood = neighborhoodName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -352,14 +325,8 @@ struct ResidentProfileView: View {
         }
         .onAppear {
             loadCompletedProjects()
-            loadVendorOptions()
         }
-        .onChange(of: selectedPhotoItem) { newItem in
-            loadSelectedPhoto(from: newItem)
-        }
-        .onChange(of: selectedVendorId) { _ in
-            syncServiceToSelectedVendor()
-        }.sheet(isPresented: $showingAccountSettings) {
+        .sheet(isPresented: $showingAccountSettings) {
             AccountSettingsView()
         }
     }
@@ -818,7 +785,7 @@ struct ResidentProfileView: View {
                         neighborVendorsLoaded = false
                         neighborVendors = []
                         loadNeighborVendorsIfNeeded()
-                        loadVendorOptions()
+
                     } else {
                         addressSaveError = decoded.error ?? "Could not save address."
                     }
@@ -1064,15 +1031,7 @@ struct ResidentProfileView: View {
         )
     }
 
-    private var filteredVendorOptions: [Vendor] {
-        vendorOptions.filter { vendor in
-            guard !selectedService.isEmpty else {
-                return true
-            }
 
-            return (vendor.category ?? "") == selectedService
-        }
-    }
 
     private func approvalBadge(_ status: String) -> some View {
         let displayText: String
@@ -1161,66 +1120,7 @@ struct ResidentProfileView: View {
         }.resume()
     }
 
-    private func loadVendorOptions() {
-        guard residentId > 0 else {
-            vendorOptionsError = "Resident profile not found."
-            return
-        }
 
-        vendorOptionsLoading = true
-        vendorOptionsError = ""
-
-        let urlString = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/vendors/\(residentId)"
-
-        guard let url = URL(string: urlString) else {
-            vendorOptionsLoading = false
-            vendorOptionsError = "Invalid vendor URL."
-            return
-        }
-
-        URLSession.shared.dataTask(with: url) { data, _, error in
-            DispatchQueue.main.async {
-                vendorOptionsLoading = false
-            }
-
-            if let error = error {
-                DispatchQueue.main.async {
-                    vendorOptionsError = error.localizedDescription
-                }
-                return
-            }
-
-            guard let data = data else {
-                DispatchQueue.main.async {
-                    vendorOptionsError = "No vendors found."
-                }
-                return
-            }
-
-            do {
-                let decoded = try JSONDecoder().decode(VendorResponse.self, from: data)
-
-                DispatchQueue.main.async {
-                    if decoded.success == true {
-                        vendorOptions = decoded.vendors ?? []
-
-                        if selectedVendorId == 0, let firstVendor = vendorOptions.first {
-                            selectedVendorId = firstVendor.id
-                            selectedService = firstVendor.category ?? selectedService
-                        }
-                    } else {
-                        vendorOptionsError = decoded.error ?? "Could not load vendors."
-                    }
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    vendorOptionsError = String(data: data, encoding: .utf8) ?? "Could not decode vendors."
-                }
-                print(error)
-                print(String(data: data, encoding: .utf8) ?? "")
-            }
-        }.resume()
-    }
 
     private func loadNeighborVendorsIfNeeded() {
         guard !neighborVendorsLoaded else { return }
@@ -1268,55 +1168,13 @@ struct ResidentProfileView: View {
         }.resume()
     }
 
-    private func syncServiceToSelectedVendor() {
-        guard let vendor = selectedVendor() else {
-            return
-        }
 
-        if let category = vendor.category, !category.isEmpty {
-            selectedService = category
-        }
-    }
 
-    private func selectedVendor() -> Vendor? {
-        vendorOptions.first { $0.id == selectedVendorId }
-    }
 
-    private func loadSelectedPhoto(from item: PhotosPickerItem?) {
-        guard let item else { return }
 
-        Task {
-            do {
-                if let data = try await item.loadTransferable(type: Data.self),
-                let image = UIImage(data: data) {
-                    await MainActor.run {
-                        selectedImage = image
-                        uploadMessage = ""
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    uploadMessage = "Could not load selected photo."
-                }
-            }
-        }
-    }
 
-    private func submitSelectedProject() {
-        guard selectedVendorId > 0 else {
-            uploadMessage = "Please select a vendor."
-            return
-        }
 
-        guard selectedImage != nil else {
-            uploadMessage = "Please select a finished project photo first."
-            return
-        }
 
-        let vendorName = selectedVendor()?.company_name ?? "selected vendor"
-
-        uploadMessage = "Photo selected for \(vendorName). Backend upload is the next step."
-    }
 }
 
 struct AppleLookAroundCard: View {
