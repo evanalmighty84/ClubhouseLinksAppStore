@@ -383,12 +383,12 @@ struct RequestView: View {
             return
         }
 
-        guard let selectedImage else {
+        guard let projectImage = selectedImage else {
             uploadMessage = "Please select a finished project photo first."
             return
         }
 
-        guard let imageData = selectedImage.jpegData(compressionQuality: 0.82) else {
+        guard let imageData = projectImage.jpegData(compressionQuality: 0.82) else {
             uploadMessage = "Could not prepare selected photo."
             return
         }
