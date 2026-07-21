@@ -22,6 +22,8 @@ struct AccountSettingsView: View {
     @State private var showingDeleteConfirm = false
     @State private var isDeletingAccount = false
     @State private var deleteMessage = ""
+    @State private var showingDeletionSuccess = false
+
 
     private var profileAreaName: String {
         let cleanNeighborhood = savedNeighborhoodName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -110,17 +112,28 @@ struct AccountSettingsView: View {
             phone = savedPhone
         }
         .confirmationDialog(
-            "Delete Account?",
+            "Permanently Delete Account?",
             isPresented: $showingDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("Yes, Delete My Account", role: .destructive) {
-                requestAccountDeletion()
+            Button("Permanently Delete Account", role: .destructive) {
+                deleteAccountPermanently()
             }
 
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This will submit a permanent account deletion request. Clubhouse Links will delete your resident account and personal data connected to it.")
+            Text(
+                "This will permanently delete your resident account and personal data. This action cannot be undone."
+            )
+        }
+        .alert("Account Deleted", isPresented: $showingDeletionSuccess) {
+            Button("OK") {
+                clearLocalAccountAfterDeletion()
+            }
+        } message: {
+            Text(
+                "Your Clubhouse Links account and associated personal data have been permanently deleted."
+            )
         }
     }
 
@@ -203,8 +216,7 @@ struct AccountSettingsView: View {
             .font(.title2.bold())
             .foregroundStyle(.red.opacity(0.95))
 
-            Text("You can request permanent deletion of your Clubhouse Links account from inside the app. We will delete your resident profile and personal data connected to it, including your name, phone number, address, local area assignment, and account records, unless we are legally required to retain limited information.")
-            .font(.subheadline)
+            Text("Permanently deleting your Clubhouse Links account will remove your resident profile and personal data connected to it, including your name, phone number, address, local area assignment, and account records. This action cannot be undone.")            .font(.subheadline)
             .foregroundStyle(.white.opacity(0.72))
             .lineSpacing(4)
 
@@ -217,8 +229,7 @@ struct AccountSettingsView: View {
                         .tint(.white)
                     }
 
-                    Text(isDeletingAccount ? "Submitting Deletion Request..." : "Delete My Account")
-                    .font(.headline)
+                    Text(isDeletingAccount ? "Deleting Account..." : "Delete My Account")                    .font(.headline)
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -268,36 +279,29 @@ struct AccountSettingsView: View {
         saveMessage = "Account settings saved."
     }
 
-    private func requestAccountDeletion() {
+    private func deleteAccountPermanently() {
         guard residentId > 0 else {
             deleteMessage = "Resident profile not found."
+            return
+        }
+
+        guard let url = URL(
+            string: "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/delete-account"
+        ) else {
+            deleteMessage = "Invalid account deletion URL."
             return
         }
 
         isDeletingAccount = true
         deleteMessage = ""
 
-        let urlString = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/account-deletion-request"
-
-        guard let url = URL(string: urlString) else {
-            isDeletingAccount = false
-            deleteMessage = "Invalid deletion request URL."
-            return
-        }
-
         let payload: [String: Any] = [
-            "resident_id": residentId,
-            "first_name": savedFirstName,
-            "last_name": savedLastName,
-            "phone": savedPhone,
-            "address": savedAddress,
-            "signup_provider": residentSignupProvider,
-            "apple_user_id": residentAppleUserId
+            "resident_id": residentId
         ]
 
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
             isDeletingAccount = false
-            deleteMessage = "Could not prepare deletion request."
+            deleteMessage = "Could not prepare the account deletion."
             return
         }
 
@@ -306,7 +310,7 @@ struct AccountSettingsView: View {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
 
-        URLSession.shared.dataTask(with: request) { data, _, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 isDeletingAccount = false
             }
@@ -318,15 +322,36 @@ struct AccountSettingsView: View {
                 return
             }
 
-            DispatchQueue.main.async {
-                deleteMessage = "Your account deletion request has been submitted. Clubhouse Links will make sure your account and personal data are deleted."
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    deleteMessage = "The server returned an invalid response."
+                }
+                return
+            }
 
-                clearLocalAccountAfterDeletionRequest()
+            guard (200...299).contains(httpResponse.statusCode) else {
+                var message = "The account could not be deleted."
+
+                if let data,
+                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let serverError = json["error"] as? String,
+                !serverError.isEmpty {
+                    message = serverError
+                }
+
+                DispatchQueue.main.async {
+                    deleteMessage = message
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                showingDeletionSuccess = true
             }
         }.resume()
     }
 
-    private func clearLocalAccountAfterDeletionRequest() {
+    private func clearLocalAccountAfterDeletion() {
         let keysToRemove = [
             "residentId",
             "residentFirstName",
