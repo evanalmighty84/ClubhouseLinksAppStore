@@ -159,7 +159,7 @@ struct ContactView: View {
                 .padding()
                 .background(
                     LinearGradient(
-                        colors: [.cyan, .purple],
+                        colors: [.purple, .orange],
                         startPoint: .leading,
                         endPoint: .trailing
                     )

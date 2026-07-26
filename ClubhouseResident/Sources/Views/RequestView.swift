@@ -308,7 +308,7 @@ struct RequestView: View {
         if !isSignedIn {
             Text(
                 """
-                Sign in or create an account to add your address and see your home with Apple Look Around.
+                Sign in or create an account to add your address and submit a new project.
                 """
             )
             .font(.subheadline)
@@ -512,8 +512,8 @@ struct RequestView: View {
                 .background(
                     LinearGradient(
                         colors: [
-                            .cyan,
-                            .purple
+                            .purple,
+                            .orange
                         ],
                         startPoint: .leading,
                         endPoint: .trailing
@@ -690,7 +690,7 @@ struct RequestView: View {
         guard residentId > 0 else {
             vendorOptionsLoading = false
             vendorOptionsError =
-            "Resident profile not found."
+            "Create a new account to submit a project."
             return
         }
 

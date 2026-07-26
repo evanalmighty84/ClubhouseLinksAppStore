@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct FlyingBirdSpriteHeroView: View {
+    let birdHeight: CGFloat
+    let glowSize: CGFloat
+    let containerHeight: CGFloat
+    let flyInOffset: CGFloat
+
     @State private var hasFlownIn = false
     @State private var isFloating = false
     @State private var currentFrame = 0
@@ -13,7 +18,20 @@ struct FlyingBirdSpriteHeroView: View {
         every: 0.28,
         on: .main,
         in: .common
-    ).autoconnect()
+    )
+    .autoconnect()
+
+    init(
+    birdHeight: CGFloat = 230,
+    glowSize: CGFloat = 250,
+    containerHeight: CGFloat = 260,
+    flyInOffset: CGFloat = -340
+    ) {
+        self.birdHeight = birdHeight
+        self.glowSize = glowSize
+        self.containerHeight = containerHeight
+        self.flyInOffset = flyInOffset
+    }
 
     var body: some View {
         ZStack {
@@ -28,33 +46,50 @@ struct FlyingBirdSpriteHeroView: View {
                     endPoint: .bottomTrailing
                 )
             )
-            .frame(width: 250, height: 250)
+            .frame(
+                width: glowSize,
+                height: glowSize
+            )
             .blur(radius: 10)
 
             Image(frames[currentFrame])
             .resizable()
             .scaledToFit()
-            .frame(height: 230)
+            .frame(height: birdHeight)
             .offset(
-                x: hasFlownIn ? 0 : -340,
-                y: isFloating ? -8 : 8
+                x: hasFlownIn ? 0 : flyInOffset,
+                y: isFloating ? -6 : 6
             )
             .scaleEffect(hasFlownIn ? 1.0 : 0.55)
             .opacity(hasFlownIn ? 1 : 0)
-            .shadow(color: .cyan.opacity(0.45), radius: 18)
+            .shadow(
+                color: .cyan.opacity(0.45),
+                radius: 14
+            )
         }
-        .frame(height: 260)
+        .frame(height: containerHeight)
         .frame(maxWidth: .infinity)
+        .clipped()
         .onReceive(timer) { _ in
             currentFrame = (currentFrame + 1) % frames.count
         }
         .onAppear {
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.72)) {
+            withAnimation(
+                .spring(
+                    response: 0.8,
+                    dampingFraction: 0.72
+                )
+            ) {
                 hasFlownIn = true
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
-                withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + 0.65
+            ) {
+                withAnimation(
+                    .easeInOut(duration: 1.4)
+                    .repeatForever(autoreverses: true)
+                ) {
                     isFloating = true
                 }
             }

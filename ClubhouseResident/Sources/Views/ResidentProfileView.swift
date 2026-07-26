@@ -367,7 +367,7 @@ struct ResidentProfileView: View {
                         profileProjectSlide(project)
                     }
                 }
-                .frame(height: 820)
+                .frame(height: 520)
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: completedProjects.isEmpty ? .never : .automatic))
             }
         }
@@ -380,7 +380,12 @@ struct ResidentProfileView: View {
 
     private var profileInfoOnlySlide: some View {
         VStack(spacing: 10) {
-            FlyingBirdSpriteHeroView()
+            FlyingBirdSpriteHeroView(
+                birdHeight: 140,
+                glowSize: 165,
+                containerHeight: 170,
+                flyInOffset: -240
+            )
             if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 missingAddressCard
             } else {
