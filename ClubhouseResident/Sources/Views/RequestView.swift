@@ -167,7 +167,7 @@ struct RequestView: View {
     scene: MKLookAroundScene
     ) -> some View {
         ZStack(alignment: .bottomLeading) {
-            LookAroundControllerView(scene: scene)
+            RequestLookAroundControllerView(scene: scene)
             .frame(maxWidth: .infinity)
             .frame(height: 250)
             .allowsHitTesting(false)
@@ -1006,7 +1006,9 @@ struct RequestView: View {
 
 // MARK: - Look Around UIKit Wrapper
 
-private struct LookAroundControllerView:
+// MARK: - Request Look Around UIKit Wrapper
+
+private struct RequestLookAroundControllerView:
 UIViewControllerRepresentable {
 
     let scene: MKLookAroundScene
@@ -1014,8 +1016,7 @@ UIViewControllerRepresentable {
     func makeUIViewController(
     context: Context
     ) -> MKLookAroundViewController {
-        let controller =
-        MKLookAroundViewController(
+        let controller = MKLookAroundViewController(
             scene: scene
         )
 
