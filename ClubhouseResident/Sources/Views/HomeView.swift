@@ -23,6 +23,12 @@ struct HomeView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 24))
                     .shadow(color: .cyan.opacity(0.7), radius: 20)
 
+                    // Hammering bird animation
+                    HammeringBirdSpriteView()
+                    .frame(width: 180, height: 180)
+                    .padding(.top, -6)
+                    .padding(.bottom, -14)
+
                     VStack(spacing: 6) {
                         Text("Clubhouse Links")
                         .font(.largeTitle.bold())
@@ -58,18 +64,17 @@ struct HomeView: View {
 
                     NeonCard(
                         title: "Community Updates",
-                        text: "View HOA block party events,neighborhood announcements and neighborhood news."
+                        text: "View HOA block party events, neighborhood announcements, and neighborhood news."
                     )
 
                     NeonCard(
                         title: "Submit Vendor Requests",
-                        text: "Send maintenance requests, report issues, or contact local reputable vendors."
+                        text: "Send maintenance requests, report issues, or contact reputable local vendors."
                     )
-
 
                     NeonCard(
                         title: "View Vendors",
-                        text: "Browse trusted local contractors, home service providers, and HOA or neigborhood-reviewed  businesses."
+                        text: "Browse trusted local contractors, home service providers, and HOA or neighborhood-reviewed businesses."
                     )
 
                     NeonCard(
@@ -82,5 +87,35 @@ struct HomeView: View {
                 .padding()
             }
         }
+    }
+}
+
+
+// MARK: - Hammering Bird Sprite Animation
+
+private struct HammeringBirdSpriteView: View {
+    @State private var currentFrame = 0
+
+    private let frames = (1...7).map {
+        String(format: "clubhouse_bird_hammering_%02d", $0)
+    }
+
+    private let timer = Timer.publish(
+        every: 0.10,
+        on: .main,
+        in: .common
+    )
+    .autoconnect()
+
+    var body: some View {
+        Image(frames[currentFrame])
+        .resizable()
+        .scaledToFit()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .shadow(color: .cyan.opacity(0.35), radius: 10)
+        .onReceive(timer) { _ in
+            currentFrame = (currentFrame + 1) % frames.count
+        }
+        .accessibilityHidden(true)
     }
 }

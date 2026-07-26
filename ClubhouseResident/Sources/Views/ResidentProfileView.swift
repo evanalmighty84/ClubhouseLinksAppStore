@@ -380,12 +380,7 @@ struct ResidentProfileView: View {
 
     private var profileInfoOnlySlide: some View {
         VStack(spacing: 10) {
-            FlyingBirdSpriteHeroView(
-                birdHeight: 140,
-                glowSize: 165,
-                containerHeight: 170,
-                flyInOffset: -240
-            )
+            FlyingBirdSpriteHeroView()
             if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 missingAddressCard
             } else {

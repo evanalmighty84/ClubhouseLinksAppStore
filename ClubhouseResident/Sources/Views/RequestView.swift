@@ -552,8 +552,8 @@ struct RequestView: View {
                     .cyan.opacity(0.13),
                     .purple.opacity(0.24)
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                .purple.opacity(0.78),
+                .orange.opacity(0.58)
             )
         )
         .clipShape(
