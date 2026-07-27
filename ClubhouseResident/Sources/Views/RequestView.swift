@@ -549,11 +549,12 @@ struct RequestView: View {
         .background(
             LinearGradient(
                 colors: [
-                    .cyan.opacity(0.13),
-                    .purple.opacity(0.24)
+                    Color.cyan.opacity(0.78),
+                    Color.purple.opacity(0.78),
+                    Color.orange.opacity(0.58)
                 ],
-                .purple.opacity(0.78),
-                .orange.opacity(0.58)
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
         )
         .clipShape(
