@@ -17,8 +17,8 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 24) {
 
-                    // Lightbulb app icon appears first,
-                    // then fades into the regular waving bird.
+                    // Lightbulb appears first, then fades into
+                    // the existing waving bird view.
                     HomeIntroHeroView()
                     .frame(height: 190)
                     .padding(.top, 4)
@@ -85,34 +85,22 @@ struct HomeView: View {
 
                     NeonCard(
                         title: "Community Updates",
-                        text: """
-                              View HOA block party events, neighborhood \
-                        announcements, and neighborhood news.
-                              """
+                        text: "View HOA block party events, neighborhood announcements, and neighborhood news."
                     )
 
                     NeonCard(
                         title: "Submit Vendor Requests",
-                        text: """
-                              Send maintenance requests, report issues, or \
-                        contact reputable local vendors.
-                              """
+                        text: "Send maintenance requests, report issues, or contact reputable local vendors."
                     )
 
                     NeonCard(
                         title: "View Vendors",
-                        text: """
-                              Browse trusted local contractors, home service \
-                        providers, and HOA or neighborhood-reviewed businesses.
-                              """
+                        text: "Browse trusted local contractors, home service providers, and HOA or neighborhood-reviewed businesses."
                     )
 
                     NeonCard(
                         title: "Upcoming Events",
-                        text: """
-                              See social events, meetings, holiday celebrations, \
-                        and other activities.
-                              """
+                        text: "See social events, meetings, holiday celebrations, and other activities."
                     )
 
                     Spacer(minLength: 90)
@@ -185,7 +173,7 @@ private struct HomeIntroHeroView: View {
 
         hasStarted = true
 
-        // Display the lightbulb app icon for 1.5 seconds.
+        // Show the lightbulb icon for 1.5 seconds.
         do {
             try await Task.sleep(
                 nanoseconds: 1_500_000_000
@@ -198,7 +186,7 @@ private struct HomeIntroHeroView: View {
             return
         }
 
-        // Fade the lightbulb into the existing waving bird.
+        // Fade into the regular waving bird.
         withAnimation(
             .easeInOut(duration: 0.65)
         ) {
