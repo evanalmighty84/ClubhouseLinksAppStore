@@ -17,17 +17,27 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 24) {
 
+                    // Lightbulb app icon appears first,
+                    // then fades into the regular waving bird.
+                    HomeIntroHeroView()
+                    .frame(height: 190)
+                    .padding(.top, 4)
+                    .padding(.bottom, -6)
+
+                    // Tennis-court clubhouse image
                     Image("hoa")
                     .resizable()
                     .scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: 24))
-                    .shadow(color: .cyan.opacity(0.7), radius: 20)
-
-                    // Hammering bird animation
-                    HammeringBirdSpriteView()
-                    .frame(width: 180, height: 180)
-                    .padding(.top, -6)
-                    .padding(.bottom, -14)
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 24,
+                            style: .continuous
+                        )
+                    )
+                    .shadow(
+                        color: .cyan.opacity(0.7),
+                        radius: 20
+                    )
 
                     VStack(spacing: 6) {
                         Text("Clubhouse Links")
@@ -52,34 +62,57 @@ struct HomeView: View {
                         .padding()
                         .background(
                             LinearGradient(
-                                colors: [.cyan, .purple],
+                                colors: [
+                                    .cyan,
+                                    .purple
+                                ],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
                         .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
-                        .shadow(color: .cyan.opacity(0.5), radius: 12)
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: 18,
+                                style: .continuous
+                            )
+                        )
+                        .shadow(
+                            color: .cyan.opacity(0.5),
+                            radius: 12
+                        )
                     }
 
                     NeonCard(
                         title: "Community Updates",
-                        text: "View HOA block party events, neighborhood announcements, and neighborhood news."
+                        text: """
+                              View HOA block party events, neighborhood \
+                        announcements, and neighborhood news.
+                              """
                     )
 
                     NeonCard(
                         title: "Submit Vendor Requests",
-                        text: "Send maintenance requests, report issues, or contact reputable local vendors."
+                        text: """
+                              Send maintenance requests, report issues, or \
+                        contact reputable local vendors.
+                              """
                     )
 
                     NeonCard(
                         title: "View Vendors",
-                        text: "Browse trusted local contractors, home service providers, and HOA or neighborhood-reviewed businesses."
+                        text: """
+                              Browse trusted local contractors, home service \
+                        providers, and HOA or neighborhood-reviewed businesses.
+                              """
                     )
 
                     NeonCard(
                         title: "Upcoming Events",
-                        text: "See social events, meetings, holiday celebrations, and other activities."
+                        text: """
+                              See social events, meetings, holiday celebrations, \
+                        and other activities.
+                              """
                     )
 
                     Spacer(minLength: 90)
@@ -91,60 +124,85 @@ struct HomeView: View {
 }
 
 
-// MARK: - Hammering Bird Sprite Animation
+// MARK: - Lightbulb to Waving Bird Intro
 
-private struct HammeringBirdSpriteView: View {
-    @State private var currentFrame = 0
-    @State private var showLogo = false
-
-    private let frames = (1...7).map {
-        String(format: "clubhouse_bird_hammering_%02d", $0)
-    }
-
-    private let frameDuration: UInt64 = 300_000_000 // 0.30 seconds
+private struct HomeIntroHeroView: View {
+    @State private var showWavingBird = false
+    @State private var hasStarted = false
 
     var body: some View {
         ZStack {
-            if showLogo {
-                Image("clubhouse_logo")
-                .resizable()
-                .scaledToFit()
+            if showWavingBird {
+                FlyingBirdHeroView()
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
                 .transition(
-                    .opacity.combined(with: .scale(scale: 0.85))
+                    .opacity.combined(
+                        with: .scale(scale: 0.88)
+                    )
                 )
             } else {
-                Image(frames[currentFrame])
+                Image("clubhouse_app_icon")
                 .resizable()
+                .interpolation(.high)
                 .scaledToFit()
-                .shadow(color: .cyan.opacity(0.35), radius: 10)
-                .transition(.opacity)
+                .frame(width: 150, height: 150)
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 30,
+                        style: .continuous
+                    )
+                )
+                .shadow(
+                    color: .cyan.opacity(0.65),
+                    radius: 18
+                )
+                .shadow(
+                    color: .purple.opacity(0.45),
+                    radius: 24
+                )
+                .transition(
+                    .opacity.combined(
+                        with: .scale(scale: 0.88)
+                    )
+                )
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
         .task {
-            await playAnimationOnce()
+            await startIntroOnce()
         }
         .accessibilityHidden(true)
     }
 
     @MainActor
-    private func playAnimationOnce() async {
-        for index in frames.indices {
-            currentFrame = index
-
-            do {
-                try await Task.sleep(nanoseconds: frameDuration)
-            } catch {
-                return
-            }
-
-            guard !Task.isCancelled else {
-                return
-            }
+    private func startIntroOnce() async {
+        guard !hasStarted else {
+            return
         }
 
-        withAnimation(.easeInOut(duration: 0.45)) {
-            showLogo = true
+        hasStarted = true
+
+        // Display the lightbulb app icon for 1.5 seconds.
+        do {
+            try await Task.sleep(
+                nanoseconds: 1_500_000_000
+            )
+        } catch {
+            return
+        }
+
+        guard !Task.isCancelled else {
+            return
+        }
+
+        // Fade the lightbulb into the existing waving bird.
+        withAnimation(
+            .easeInOut(duration: 0.65)
+        ) {
+            showWavingBird = true
         }
     }
 }
