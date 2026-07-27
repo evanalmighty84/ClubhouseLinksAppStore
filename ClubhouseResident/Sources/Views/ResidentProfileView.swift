@@ -7,6 +7,10 @@ struct CompletedProjectsResponse: Codable {
     let projects: [ResidentCompletedProject]?
     let error: String?
 }
+extension Notification.Name {
+    static let completedProjectSubmitted =
+    Notification.Name("completedProjectSubmitted")
+}
 
 struct ResidentCompletedProject: Codable, Identifiable {
     let id: Int
@@ -325,6 +329,19 @@ struct ResidentProfileView: View {
         }
         .onAppear {
             loadCompletedProjects()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: .completedProjectSubmitted
+            )
+        ) { _ in
+            neighborVendorsLoaded = false
+            neighborVendors.removeAll()
+
+            loadCompletedProjects()
+            loadNeighborVendorsIfNeeded(
+                forceRefresh: true
+            )
         }
         .sheet(isPresented: $showingAccountSettings) {
             AccountSettingsView()
@@ -953,7 +970,7 @@ struct ResidentProfileView: View {
             .stroke(.cyan.opacity(0.55), lineWidth: 1)
         )
         .onAppear {
-            loadNeighborVendorsIfNeeded()
+            loadNeighborVendorsIfNeeded(forceRefresh: true)
         }
     }
 
@@ -1122,50 +1139,97 @@ struct ResidentProfileView: View {
 
 
 
-    private func loadNeighborVendorsIfNeeded() {
-        guard !neighborVendorsLoaded else { return }
-        guard residentId > 0 else { return }
+    private func loadNeighborVendorsIfNeeded(
+    forceRefresh: Bool = false
+    ) {
+        if neighborVendorsLoaded && !forceRefresh {
+            return
+        }
+
+        guard residentId > 0 else {
+            return
+        }
 
         neighborVendorsLoaded = true
         isLoadingNeighborVendors = true
 
-        let urlString = "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/vendors/\(residentId)"
+        let urlString =
+        "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/vendors/\(residentId)"
 
         guard let url = URL(string: urlString) else {
             isLoadingNeighborVendors = false
+            neighborVendorsLoaded = false
             return
         }
 
-        URLSession.shared.dataTask(with: url) { data, _, error in
+        URLSession.shared.dataTask(with: url) {
+            data,
+            _,
+            error in
+
             DispatchQueue.main.async {
                 isLoadingNeighborVendors = false
             }
 
-            if let error = error {
-                print("neighbor vendor error:", error.localizedDescription)
+            if let error {
+                DispatchQueue.main.async {
+                    neighborVendorsLoaded = false
+                }
+
+                print(
+                    "neighbor vendor error:",
+                    error.localizedDescription
+                )
                 return
             }
 
-            guard let data = data else {
+            guard let data else {
+                DispatchQueue.main.async {
+                    neighborVendorsLoaded = false
+                }
+
                 print("No neighbor vendor data found.")
                 return
             }
 
             do {
-                let decoded = try JSONDecoder().decode(VendorResponse.self, from: data)
+                let decoded = try JSONDecoder().decode(
+                    VendorResponse.self,
+                    from: data
+                )
 
                 DispatchQueue.main.async {
                     if decoded.success == true {
-                        neighborVendors = decoded.vendors ?? []
+                        neighborVendors =
+                        decoded.vendors ?? []
                     } else {
-                        print(decoded.error ?? "Could not load neighbor vendors.")
+                        neighborVendorsLoaded = false
+
+                        print(
+                            decoded.error ??
+                            "Could not load neighbor vendors."
+                        )
                     }
                 }
             } catch {
-                print("neighbor vendor decode error:", error)
-                print(String(data: data, encoding: .utf8) ?? "")
+                DispatchQueue.main.async {
+                    neighborVendorsLoaded = false
+                }
+
+                print(
+                    "neighbor vendor decode error:",
+                    error
+                )
+
+                print(
+                    String(
+                        data: data,
+                        encoding: .utf8
+                    ) ?? ""
+                )
             }
-        }.resume()
+        }
+        .resume()
     }
 
 

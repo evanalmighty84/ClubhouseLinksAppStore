@@ -438,6 +438,10 @@ struct SignupView: View {
                 "Verification Code",
                 text: $verificationCode
             )
+            .keyboardType(.numberPad)
+            .textContentType(.oneTimeCode)
+            .textContentType(.oneTimeCode)
+            .autocorrectionDisabled()
             .font(.title2)
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
@@ -481,25 +485,7 @@ struct SignupView: View {
                     verificationCode = cleanedCode
                 }
             }
-            PasteButton(payloadType: String.self) { pastedValues in
-                guard let pastedValue = pastedValues.first else {
-                    return
-                }
 
-                let pastedCode = String(
-                    pastedValue
-                    .filter(\.isNumber)
-                    .prefix(6)
-                )
-
-                guard !pastedCode.isEmpty else {
-                    return
-                }
-
-                verificationCode = pastedCode
-                verificationMessage = ""
-                errorMessage = ""
-            }
             .labelStyle(.titleAndIcon)
             .tint(.cyan)
             if !verificationMessage.isEmpty {

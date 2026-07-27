@@ -9,7 +9,6 @@ struct SubmitCompletedProjectResponse: Codable {
     let message: String?
     let error: String?
 }
-
 struct RequestView: View {
     @AppStorage("residentId") private var residentId = 0
     @AppStorage("residentFirstName") private var firstName = ""
@@ -1098,6 +1097,10 @@ struct RequestView: View {
                         resetProjectFormAfterSubmission()
 
                         uploadMessage = successMessage
+                        NotificationCenter.default.post(
+                            name: .completedProjectSubmitted,
+                            object: nil
+                        )
 
                         DispatchQueue.main.asyncAfter(
                             deadline: .now() + 0.9
