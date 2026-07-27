@@ -246,6 +246,10 @@ struct StartServiceView: View {
             .foregroundStyle(.white.opacity(0.75))
 
             VStack(alignment: .leading, spacing: 16) {
+                AppleLookAroundCard(address: address)
+                .frame(height: 140)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+
                 Text("Service")
                 .font(.headline)
                 .foregroundStyle(.cyan)

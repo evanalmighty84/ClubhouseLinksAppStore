@@ -222,13 +222,15 @@ struct ResidentProfileView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.82))
                     .padding(.horizontal, 12)
-                    if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        flippableProfileCard
-                        FlyingBirdHeroView()
-                    } else {
-                        FlyingBirdHeroView()
-                        flippableProfileCard
-                    }
+                    FlyingBirdHeroView(
+                        completedProjects: completedProjects,
+                        completedProjectsLoading: completedProjectsLoading,
+                        completedProjectsError: completedProjectsError
+                    )
+
+                    // Neighborhood projects now appear immediately on the
+                    // front of the second card.
+                    neighborProjectsCardBack
 
                     NavigationLink {
                         VendorDirectoryView()
@@ -869,35 +871,14 @@ struct ResidentProfileView: View {
 
     private var neighborProjectsCardBack: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Neighbor Projects")
-                .font(.title.bold())
-                .foregroundStyle(.white)
-
-                Spacer()
-
-                Button {
-                    withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
-                        isProfileFlipped = false
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.uturn.left.circle.fill")
-                        Text("Back")
-                    }
-                    .font(.headline)
-                    .foregroundStyle(.cyan)
-                }
-            }
+            Text("Neighborhood Projects")
+            .font(.title.bold())
+            .foregroundStyle(.white)
 
             Text("See trusted home service contractors used by neighbors near you.")
             .font(.subheadline)
             .foregroundStyle(.white.opacity(0.72))
             .lineSpacing(3)
-
-            AppleLookAroundCard(address: address)
-            .frame(height: 140)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("Service")
