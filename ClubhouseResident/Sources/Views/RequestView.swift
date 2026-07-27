@@ -262,6 +262,7 @@ struct RequestView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity)
+        .frame(minHeight: 320, alignment: .top)
         .background(
             LinearGradient(
                 colors: [
@@ -297,7 +298,7 @@ struct RequestView: View {
 
     private var fallbackCardTitle: String {
         if !isSignedIn || cleanAddress.isEmpty {
-            return "What's your address?"
+            return "Sign In to submit a project"
         }
 
         return residentDisplayName
@@ -308,7 +309,7 @@ struct RequestView: View {
         if !isSignedIn {
             Text(
                 """
-                Sign in or create an account to add your address and submit a new project.
+                Sign in to see nearby completed projects.
                 """
             )
             .font(.subheadline)
@@ -505,13 +506,13 @@ struct RequestView: View {
                 hideKeyboard()
                 submitSelectedProject()
             } label: {
-                Text("Submit for Review")
+                Text("Submit Completed Work")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(
                     LinearGradient(
-                        colors: [.cyan, .purple],
+                        colors: [.purple, .orange],
                         startPoint: .leading,
                         endPoint: .trailing
                     )

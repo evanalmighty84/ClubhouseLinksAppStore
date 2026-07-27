@@ -47,8 +47,8 @@ struct HomeView: View {
                         .background(
                             LinearGradient(
                                 colors: [
-                                    .cyan,
-                                    .purple
+                                    .purple,
+                                    .orange
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -68,8 +68,8 @@ struct HomeView: View {
                     }
 
                     NeonCard(
-                        title: "Community Updates",
-                        text: "View HOA block party events, neighborhood announcements, and neighborhood news."
+                        title: "See Completed Projects By Neigborhos",
+                        text: "Choose your next home project or repair specialist by seeing who your neighbors have used"
                     )
 
                     NeonCard(
@@ -166,14 +166,15 @@ private struct HomeIntroImageView: View {
                 style: .continuous
             )
             .stroke(
-                LinearGradient(
-                    colors: [
-                        .cyan.opacity(0.7),
-                        .purple.opacity(0.7)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
+        LinearGradient(
+        colors: [
+        .cyan.opacity(0.7),
+        .orange.opacity(0.75),
+        .purple.opacity(0.7)
+    ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    ),
                 lineWidth: 1.5
             )
         }
