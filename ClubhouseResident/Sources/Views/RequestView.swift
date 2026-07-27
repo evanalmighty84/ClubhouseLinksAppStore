@@ -34,6 +34,8 @@ struct RequestView: View {
     @State private var manualVendorName = ""
     @State private var manualVendorPhone = ""
 
+
+
     private let fallbackServiceOptions = [
         "Painting",
         "Pool Service",
@@ -160,7 +162,13 @@ struct RequestView: View {
         .onChange(of: address) { _ in
             loadResidentLookAround()
         }
+
         .onChange(of: selectedPhotoItem) { newItem in
+            guard let newItem else {
+                selectedImage = nil
+                return
+            }
+
             loadSelectedPhoto(from: newItem)
         }
         .onChange(of: selectedVendorId) { _ in
@@ -185,6 +193,17 @@ struct RequestView: View {
         } else {
             birdAddressFallbackCard
         }
+    }
+
+    @MainActor
+    private func resetProjectFormAfterSubmission() {
+        selectedPhotoItem = nil
+        selectedImage = nil
+
+        manualVendorName = ""
+        manualVendorPhone = ""
+
+        uploadMessage = ""
     }
 
     private func lookAroundAddressCard(
@@ -1057,20 +1076,24 @@ struct RequestView: View {
 
                 DispatchQueue.main.async {
                     if decoded.success == true {
-                        uploadMessage = decoded.message ?? "Completed project submitted for review."
+                        let successMessage =
+                        decoded.message ??
+                        "Completed project submitted for review."
 
-                        selectedPhotoItem = nil
-                        selectedImage = nil
-                        manualVendorName = ""
-                        manualVendorPhone = ""
+                        resetProjectFormAfterSubmission()
+
+                        uploadMessage = successMessage
 
                         DispatchQueue.main.asyncAfter(
                             deadline: .now() + 0.9
                         ) {
+                            uploadMessage = ""
                             selectedTab = "home"
                         }
                     } else {
-                        uploadMessage = decoded.error ?? "Could not submit completed project."
+                        uploadMessage =
+                        decoded.error ??
+                        "Could not submit completed project."
                     }
                 }
             } catch {

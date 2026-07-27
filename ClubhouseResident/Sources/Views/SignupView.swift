@@ -3,11 +3,16 @@ import MapKit
 
 // MARK: - Apple Maps Address Autocomplete
 
-final class AddressAutocomplete: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
+final class AddressAutocomplete:
+NSObject,
+ObservableObject,
+MKLocalSearchCompleterDelegate {
+
     @Published var suggestions: [MKLocalSearchCompletion] = []
     @Published var errorMessage = ""
 
     private let completer = MKLocalSearchCompleter()
+    private var acceptsDelegateUpdates = false
 
     override init() {
         super.init()
@@ -21,15 +26,24 @@ final class AddressAutocomplete: NSObject, ObservableObject, MKLocalSearchComple
             in: .whitespacesAndNewlines
         )
 
+        // Immediately remove an old autocomplete error
+        // when the user starts typing again.
+        errorMessage = ""
+
         guard trimmedQuery.count >= 3 else {
+            acceptsDelegateUpdates = false
+            completer.queryFragment = ""
             suggestions = []
             return
         }
 
+        acceptsDelegateUpdates = true
         completer.queryFragment = trimmedQuery
     }
 
     func clear() {
+        // Ignore any delayed callback from the previous search.
+        acceptsDelegateUpdates = false
         completer.queryFragment = ""
         suggestions = []
         errorMessage = ""
@@ -38,8 +52,19 @@ final class AddressAutocomplete: NSObject, ObservableObject, MKLocalSearchComple
     func completerDidUpdateResults(
     _ completer: MKLocalSearchCompleter
     ) {
+        guard acceptsDelegateUpdates else {
+            return
+        }
+
         DispatchQueue.main.async {
-            self.suggestions = Array(completer.results.prefix(5))
+            guard self.acceptsDelegateUpdates else {
+                return
+            }
+
+            self.suggestions = Array(
+                completer.results.prefix(5)
+            )
+
             self.errorMessage = ""
         }
     }
@@ -48,7 +73,15 @@ final class AddressAutocomplete: NSObject, ObservableObject, MKLocalSearchComple
     _ completer: MKLocalSearchCompleter,
     didFailWithError error: Error
     ) {
+        guard acceptsDelegateUpdates else {
+            return
+        }
+
         DispatchQueue.main.async {
+            guard self.acceptsDelegateUpdates else {
+                return
+            }
+
             self.suggestions = []
             self.errorMessage = error.localizedDescription
         }
@@ -586,7 +619,8 @@ struct SignupView: View {
                 .multilineTextAlignment(.center)
             }
 
-            if !addressAutocomplete.suggestions.isEmpty {
+            if !addressAutocomplete.errorMessage.isEmpty &&
+            addressAutocomplete.suggestions.isEmpty {
                 addressSuggestionsList
             }
 
