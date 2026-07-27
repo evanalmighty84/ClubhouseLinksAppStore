@@ -33,8 +33,6 @@ struct RequestView: View {
 
     @State private var manualVendorName = ""
     @State private var manualVendorPhone = ""
-    @State private var selectedPhotoItem: PhotosPickerItem?
-    @State private var selectedImage: UIImage?
 
     @State private var photoPickerResetID = UUID()
     @State private var photoLoadToken = UUID()
