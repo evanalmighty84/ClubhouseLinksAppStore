@@ -401,7 +401,7 @@ struct ResidentProfileView: View {
                 .multilineTextAlignment(.center)
                 .padding(.top, 4)
             } else if completedProjects.isEmpty && !completedProjectsLoading {
-                Text("No completed projects submitted yet.")
+                Text("Your completed projects will be shown here.")
                 .font(.caption.bold())
                 .foregroundStyle(.white.opacity(0.65))
                 .padding(.top, 4)
