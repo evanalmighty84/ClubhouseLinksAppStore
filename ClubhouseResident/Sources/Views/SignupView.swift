@@ -461,7 +461,9 @@ struct SignupView: View {
                     lineWidth: 1.5
                 )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .clipShape(
+                RoundedRectangle(cornerRadius: 22)
+            )
             .keyboardType(.numberPad)
             .textContentType(.oneTimeCode)
             .focused(
@@ -469,13 +471,37 @@ struct SignupView: View {
                 equals: .verificationCode
             )
             .onChange(of: verificationCode) { newValue in
-                verificationCode = String(
+                let cleanedCode = String(
                     newValue
                     .filter(\.isNumber)
                     .prefix(6)
                 )
-            }
 
+                if verificationCode != cleanedCode {
+                    verificationCode = cleanedCode
+                }
+            }
+            PasteButton(payloadType: String.self) { pastedValues in
+                guard let pastedValue = pastedValues.first else {
+                    return
+                }
+
+                let pastedCode = String(
+                    pastedValue
+                    .filter(\.isNumber)
+                    .prefix(6)
+                )
+
+                guard !pastedCode.isEmpty else {
+                    return
+                }
+
+                verificationCode = pastedCode
+                verificationMessage = ""
+                errorMessage = ""
+            }
+            .labelStyle(.titleAndIcon)
+            .tint(.cyan)
             if !verificationMessage.isEmpty {
                 Text(verificationMessage)
                 .font(.caption)
@@ -610,7 +636,9 @@ struct SignupView: View {
                 addressAutocomplete.updateQuery(newValue)
             }
 
-            if !addressAutocomplete.errorMessage.isEmpty {
+            if !addressAutocomplete.errorMessage.isEmpty &&
+            addressAutocomplete.suggestions.isEmpty {
+
                 Text(
                     "Address suggestions are temporarily unavailable. You can still enter your address manually."
                 )
@@ -619,10 +647,12 @@ struct SignupView: View {
                 .multilineTextAlignment(.center)
             }
 
-            if !addressAutocomplete.errorMessage.isEmpty &&
-            addressAutocomplete.suggestions.isEmpty {
+            if !addressAutocomplete.suggestions.isEmpty {
                 addressSuggestionsList
             }
+
+
+
 
             primaryButton(
                 title: "Next",

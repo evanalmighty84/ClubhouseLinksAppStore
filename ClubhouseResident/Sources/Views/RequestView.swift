@@ -33,6 +33,11 @@ struct RequestView: View {
 
     @State private var manualVendorName = ""
     @State private var manualVendorPhone = ""
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
+
+    @State private var photoPickerResetID = UUID()
+    @State private var photoLoadToken = UUID()
 
 
 
@@ -196,9 +201,20 @@ struct RequestView: View {
     }
 
     @MainActor
-    private func resetProjectFormAfterSubmission() {
+    private func clearSelectedProjectPhoto() {
+        // Invalidates any older photo-loading task.
+        photoLoadToken = UUID()
+
         selectedPhotoItem = nil
         selectedImage = nil
+
+        // Forces SwiftUI to create a fresh PhotosPicker.
+        photoPickerResetID = UUID()
+    }
+
+    @MainActor
+    private func resetProjectFormAfterSubmission() {
+        clearSelectedProjectPhoto()
 
         manualVendorName = ""
         manualVendorPhone = ""
@@ -642,6 +658,7 @@ struct RequestView: View {
                     }
                 }
             }
+            .id(photoPickerResetID)
             .buttonStyle(.plain)
         }
     }
