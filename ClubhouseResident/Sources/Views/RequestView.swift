@@ -511,10 +511,7 @@ struct RequestView: View {
                 .padding()
                 .background(
                     LinearGradient(
-                        colors: [
-                            .purple,
-                            .orange
-                        ],
+                        colors: [.cyan, .purple],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -549,9 +546,8 @@ struct RequestView: View {
         .background(
             LinearGradient(
                 colors: [
-                    Color.cyan.opacity(0.78),
-                    Color.purple.opacity(0.78),
-                    Color.orange.opacity(0.58)
+                    .cyan.opacity(0.13),
+                    .purple.opacity(0.24)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

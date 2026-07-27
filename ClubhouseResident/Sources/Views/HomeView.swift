@@ -95,27 +95,56 @@ struct HomeView: View {
 
 private struct HammeringBirdSpriteView: View {
     @State private var currentFrame = 0
+    @State private var showLogo = false
 
     private let frames = (1...7).map {
         String(format: "clubhouse_bird_hammering_%02d", $0)
     }
 
-    private let timer = Timer.publish(
-        every: 0.10,
-        on: .main,
-        in: .common
-    )
-    .autoconnect()
+    private let frameDuration: UInt64 = 300_000_000 // 0.30 seconds
 
     var body: some View {
-        Image(frames[currentFrame])
-        .resizable()
-        .scaledToFit()
+        ZStack {
+            if showLogo {
+                Image("clubhouse_logo")
+                .resizable()
+                .scaledToFit()
+                .transition(
+                    .opacity.combined(with: .scale(scale: 0.85))
+                )
+            } else {
+                Image(frames[currentFrame])
+                .resizable()
+                .scaledToFit()
+                .shadow(color: .cyan.opacity(0.35), radius: 10)
+                .transition(.opacity)
+            }
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .shadow(color: .cyan.opacity(0.35), radius: 10)
-        .onReceive(timer) { _ in
-            currentFrame = (currentFrame + 1) % frames.count
+        .task {
+            await playAnimationOnce()
         }
         .accessibilityHidden(true)
+    }
+
+    @MainActor
+    private func playAnimationOnce() async {
+        for index in frames.indices {
+            currentFrame = index
+
+            do {
+                try await Task.sleep(nanoseconds: frameDuration)
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled else {
+                return
+            }
+        }
+
+        withAnimation(.easeInOut(duration: 0.45)) {
+            showLogo = true
+        }
     }
 }
