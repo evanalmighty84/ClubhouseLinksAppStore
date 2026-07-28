@@ -250,7 +250,6 @@ struct VendorRequestsView: View {
     }
 
     @MainActor
-    @MainActor
     private func loadRequests() async {
         guard vendorId > 0 else {
             errorMessage = "Vendor account not found."
