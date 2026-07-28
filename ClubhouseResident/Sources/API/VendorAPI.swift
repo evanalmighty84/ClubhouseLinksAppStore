@@ -259,6 +259,18 @@ final class VendorAPI {
         body: Data? = nil
     ) async throws -> (Data, HTTPURLResponse) {
         var request = URLRequest(url: url)
+        request.cachePolicy =
+        .reloadIgnoringLocalCacheData
+
+        request.setValue(
+            "no-cache",
+            forHTTPHeaderField: "Cache-Control"
+        )
+
+        request.setValue(
+            "no-cache",
+            forHTTPHeaderField: "Pragma"
+        )
         request.httpMethod = method
         request.timeoutInterval = 30
 

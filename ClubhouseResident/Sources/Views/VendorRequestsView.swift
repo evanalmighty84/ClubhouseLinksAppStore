@@ -250,28 +250,52 @@ struct VendorRequestsView: View {
     }
 
     @MainActor
+    @MainActor
     private func loadRequests() async {
         guard vendorId > 0 else {
             errorMessage = "Vendor account not found."
             return
         }
 
+        // Prevent the automatic load and pull-to-refresh
+        // from running at the same time.
+        guard !isLoading else {
+            return
+        }
+
         isLoading = true
         errorMessage = ""
 
+        defer {
+            isLoading = false
+        }
+
         do {
             let response =
-                try await VendorAPI.shared.fetchRequests(
-                    vendorId: vendorId
-                )
+            try await VendorAPI.shared.fetchRequests(
+                vendorId: vendorId
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
 
             requests = response.requests ?? []
             newCount = response.new_count ?? 0
+
+        } catch is CancellationError {
+            // SwiftUI cancelled the task because another load started.
+            // Do not show this as an error to the vendor.
+            return
+
+        } catch let error as URLError
+        where error.code == .cancelled {
+            // URLSession cancellation is also safe to ignore.
+            return
+
         } catch {
             errorMessage = error.localizedDescription
         }
-
-        isLoading = false
     }
 
     @MainActor
