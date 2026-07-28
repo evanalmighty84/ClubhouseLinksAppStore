@@ -104,6 +104,12 @@ struct SignupView: View {
     @AppStorage("residentNeighborhoodName") private var residentNeighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
 
+    @AppStorage("accountType") private var accountType = ""
+    @AppStorage("vendorId") private var vendorId = 0
+    @AppStorage("vendorCompanyName") private var vendorCompanyName = ""
+    @AppStorage("vendorCategory") private var vendorCategory = ""
+    @AppStorage("vendorPhone") private var vendorPhone = ""
+
     @StateObject private var addressAutocomplete = AddressAutocomplete()
 
     @State private var firstName = ""
@@ -133,6 +139,9 @@ struct SignupView: View {
 
     private let checkVerificationURL =
     "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/check-verification"
+
+    private let vendorLoginURL =
+    "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/vendors/login"
 
     private let animatedTransition: AnyTransition =
     .asymmetric(
@@ -438,10 +447,6 @@ struct SignupView: View {
                 "Verification Code",
                 text: $verificationCode
             )
-            .keyboardType(.numberPad)
-            .textContentType(.oneTimeCode)
-            .textContentType(.oneTimeCode)
-            .autocorrectionDisabled()
             .font(.title2)
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
@@ -465,9 +470,7 @@ struct SignupView: View {
                     lineWidth: 1.5
                 )
             )
-            .clipShape(
-                RoundedRectangle(cornerRadius: 22)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 22))
             .keyboardType(.numberPad)
             .textContentType(.oneTimeCode)
             .focused(
@@ -475,19 +478,13 @@ struct SignupView: View {
                 equals: .verificationCode
             )
             .onChange(of: verificationCode) { newValue in
-                let cleanedCode = String(
+                verificationCode = String(
                     newValue
                     .filter(\.isNumber)
                     .prefix(6)
                 )
-
-                if verificationCode != cleanedCode {
-                    verificationCode = cleanedCode
-                }
             }
 
-            .labelStyle(.titleAndIcon)
-            .tint(.cyan)
             if !verificationMessage.isEmpty {
                 Text(verificationMessage)
                 .font(.caption)
@@ -622,9 +619,7 @@ struct SignupView: View {
                 addressAutocomplete.updateQuery(newValue)
             }
 
-            if !addressAutocomplete.errorMessage.isEmpty &&
-            addressAutocomplete.suggestions.isEmpty {
-
+            if !addressAutocomplete.errorMessage.isEmpty {
                 Text(
                     "Address suggestions are temporarily unavailable. You can still enter your address manually."
                 )
@@ -633,12 +628,10 @@ struct SignupView: View {
                 .multilineTextAlignment(.center)
             }
 
-            if !addressAutocomplete.suggestions.isEmpty {
+            if !addressAutocomplete.errorMessage.isEmpty &&
+            addressAutocomplete.suggestions.isEmpty {
                 addressSuggestionsList
             }
-
-
-
 
             primaryButton(
                 title: "Next",
@@ -1172,14 +1165,150 @@ struct SignupView: View {
                 "Your mobile number has been verified."
                 errorMessage = ""
 
+                resolveVerifiedAccount()
+            }
+        }
+        .resume()
+    }
+
+
+    /*
+     * A verified phone number is checked against hoa_vendors
+     * before the resident signup continues.
+     *
+     * A 404 means the phone does not belong to a vendor and the
+     * normal resident signup flow continues.
+     */
+    private func resolveVerifiedAccount() {
+        guard let url = URL(
+            string: vendorLoginURL
+        ) else {
+            errorMessage =
+            "Invalid vendor account URL."
+            return
+        }
+
+        isCheckingVerification = true
+
+        let payload: [String: String] = [
+            "phone": normalizedPhone
+        ]
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+        request.httpBody =
+        try? JSONSerialization.data(
+            withJSONObject: payload
+        )
+
+        URLSession.shared.dataTask(
+            with: request
+        ) { data, response, error in
+            DispatchQueue.main.async {
+                isCheckingVerification = false
+
+                if let error {
+                    errorMessage =
+                    error.localizedDescription
+                    return
+                }
+
+                guard let data,
+                let httpResponse =
+                response as? HTTPURLResponse
+                else {
+                    errorMessage =
+                    "No response from the account server."
+                    return
+                }
+
+                /*
+                 * No vendor match is not an error. It means this
+                 * verified phone should continue as a resident.
+                 */
+                if httpResponse.statusCode == 404 {
+                    continueAsResidentAfterVerification()
+                    return
+                }
+
+                let decoded =
+                try? JSONDecoder().decode(
+                    VendorLoginResponse.self,
+                    from: data
+                )
+
+                guard
+                (200...299).contains(
+                    httpResponse.statusCode
+                ),
+                decoded?.success == true,
+                let vendor = decoded?.vendor
+                else {
+                    errorMessage =
+                    decoded?.error ??
+                    "The account type could not be determined."
+                    return
+                }
+
+                accountType = "vendor"
+                vendorId = vendor.id
+                vendorCompanyName =
+                vendor.company_name
+                vendorCategory =
+                vendor.category ?? ""
+                vendorPhone =
+                vendor.phone ?? normalizedPhone
+
+                /*
+                 * Keep resident and vendor sessions mutually
+                 * exclusive on this device.
+                 */
+                residentId = 0
+                residentIsSignedUp = false
+                savedFirstName =
+                vendor.contact_name ??
+                vendor.company_name
+                savedLastName = ""
+                savedPhone =
+                vendor.phone ?? normalizedPhone
+                savedAddress = ""
+                residentApprovalStatus = ""
+                residentNeighborhoodId = 0
+                displayAreaName = ""
+                residentNeighborhoodName = ""
+
+                VendorPushRegistration
+                .requestAuthorization()
+
+                verificationMessage =
+                "Vendor account verified."
+
                 DispatchQueue.main.asyncAfter(
-                    deadline: .now() + 0.35
+                    deadline: .now() + 0.25
                 ) {
-                    goTo(.address, focus: .address)
+                    dismiss()
                 }
             }
         }
         .resume()
+    }
+
+    private func continueAsResidentAfterVerification() {
+        accountType = "resident"
+        vendorId = 0
+        vendorCompanyName = ""
+        vendorCategory = ""
+        vendorPhone = ""
+
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.35
+        ) {
+            goTo(.address, focus: .address)
+        }
     }
 
     // MARK: - Address Selection
@@ -1418,6 +1547,12 @@ struct SignupView: View {
                 resident.display_area_name ?? ""
                 residentNeighborhoodName =
                 resident.neighborhood_name ?? ""
+
+                accountType = "resident"
+                vendorId = 0
+                vendorCompanyName = ""
+                vendorCategory = ""
+                vendorPhone = ""
 
                 residentIsSignedUp = true
                 dismiss()

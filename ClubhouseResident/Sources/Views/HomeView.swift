@@ -3,13 +3,19 @@ import SwiftUI
 struct HomeView: View {
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
     @AppStorage("residentId") private var residentId = 0
+    @AppStorage("accountType") private var accountType = ""
+    @AppStorage("vendorId") private var vendorId = 0
+
 
     var body: some View {
-        if residentId > 0 || residentIsSignedUp {
+        if accountType == "vendor" && vendorId > 0 {
+            VendorHomeView()
+        } else if residentId > 0 || residentIsSignedUp {
             ResidentProfileView()
         } else {
             homeContent
         }
+
     }
 
     private var homeContent: some View {
