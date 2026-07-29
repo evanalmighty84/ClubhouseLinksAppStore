@@ -7,6 +7,21 @@ struct VendorLoginResponse: Decodable {
     let error: String?
 }
 
+
+struct VendorProfileResponse: Decodable {
+    let success: Bool?
+    let vendor: VendorAccount?
+    let error: String?
+}
+
+struct VendorLogoUploadResponse: Decodable {
+    let success: Bool?
+    let vendor: VendorAccount?
+    let logo_url: String?
+    let message: String?
+    let error: String?
+}
+
 struct VendorAccount: Decodable {
     let id: Int
     let neighborhood_id: Int?

@@ -425,15 +425,29 @@ private struct VendorHouseProjectsSection: View {
             }
             .padding(.horizontal, 4)
 
-            TabView {
-                ForEach(house.projects) {
-                    project in
-
-                    VendorCompletedProjectCard(
-                        project: project
-                    )
-                    .padding(.horizontal, 2)
+            GeometryReader { geometry in
+                TabView {
+                    ForEach(house.projects) { project in
+                        VendorCompletedProjectCard(
+                            project: project
+                        )
+                        .frame(
+                            width: max(
+                                geometry.size.width - 12,
+                                1
+                            )
+                        )
+                        .padding(.horizontal, 6)
+                    }
                 }
+                .tabViewStyle(
+                    .page(
+                        indexDisplayMode:
+                        house.projects.count > 1
+                        ? .automatic
+                        : .never
+                    )
+                )
             }
             .frame(height: 430)
             .tabViewStyle(
@@ -774,62 +788,59 @@ private struct VendorCompletedProjectCard: View {
     }
 
     @ViewBuilder
+    @ViewBuilder
     private var projectImage: some View {
-        if let imageString =
-        clean(project.image_url),
-        let imageURL =
-        URL(string: imageString) {
-            AsyncImage(url: imageURL) {
-                phase in
-
-                switch phase {
-                case .empty:
-                    ProgressView()
-                    .tint(.cyan)
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: 290
-                    )
-
-                case .success(let image):
-                    image
-                    .resizable()
-                    .scaledToFill()
-                    .frame(height: 290)
-                    .frame(
-                        maxWidth: .infinity
-                    )
-                    .clipped()
-
-                case .failure:
-                    imagePlaceholder
-
-                @unknown default:
-                    imagePlaceholder
-                }
-            }
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: 22
-                )
-            )
-        } else {
-            imagePlaceholder
-        }
-    }
-
-    private var imagePlaceholder: some View {
         ZStack {
             RoundedRectangle(
                 cornerRadius: 22
             )
-            .fill(.black.opacity(0.24))
-            .frame(height: 290)
+            .fill(.black.opacity(0.25))
 
-            Image(systemName: "photo")
-            .font(.system(size: 42))
-            .foregroundStyle(.cyan)
+            if let imageString =
+            clean(project.image_url),
+            let imageURL =
+            URL(string: imageString) {
+
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                        .tint(.cyan)
+
+                    case .success(let image):
+                        image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity
+                        )
+                        .padding(6)
+
+                    case .failure:
+                        imagePlaceholderContent
+
+                    @unknown default:
+                        imagePlaceholderContent
+                    }
+                }
+            } else {
+                imagePlaceholderContent
+            }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: 290)
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 22
+            )
+        )
+    }
+
+    private var imagePlaceholderContent: some View {
+        Image(systemName: "photo")
+        .font(.system(size: 42))
+        .foregroundStyle(.cyan)
     }
 
     private var projectStatus: String {
