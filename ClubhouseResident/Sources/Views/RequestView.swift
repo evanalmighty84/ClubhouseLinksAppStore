@@ -16,6 +16,11 @@ struct RequestView: View {
     @AppStorage("residentPhone") private var phone = ""
     @AppStorage("residentAddress") private var address = ""
     @AppStorage("residentSelectedTab") private var selectedTab = "home"
+    @AppStorage("accountType")
+    private var accountType = ""
+
+    @AppStorage("vendorId")
+    private var vendorId = 0
 
     @State private var selectedService = "Painting"
     @State private var selectedVendorId = 0
@@ -35,9 +40,25 @@ struct RequestView: View {
 
     @State private var photoPickerResetID = UUID()
     @State private var photoLoadToken = UUID()
+    @AppStorage("accountType")
+    private var accountType = ""
+
+    @AppStorage("vendorId")
+    private var vendorId = 0
+
+    @AppStorage("vendorCompanyName")
+    private var vendorCompanyName = ""
 
 
-
+    private var isVendorAccount: Bool {
+        accountType
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        .lowercased() == "vendor"
+        &&
+        vendorId > 0
+    }
     private let fallbackServiceOptions = [
         "Painting",
         "Pool Service",
@@ -117,8 +138,7 @@ struct RequestView: View {
 
         return name.isEmpty ? "Your Home" : name
     }
-
-    var body: some View {
+    private var residentSubmissionScreen: some View {
         NeonBackground {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -126,7 +146,11 @@ struct RequestView: View {
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
 
-                    Text("Share a finished project from a contractor you used so nearby neighbors can discover trusted home service providers.")
+                    Text(
+                        "Share a finished project from a contractor " +
+                        "you used so nearby neighbors can discover " +
+                        "trusted home service providers."
+                    )
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.78))
                     .lineSpacing(3)
@@ -158,13 +182,13 @@ struct RequestView: View {
                 vendorOptions = []
                 selectedVendorId = 0
                 vendorOptionsLoading = false
-                vendorOptionsError = "Resident profile not found."
+                vendorOptionsError =
+                "Resident profile not found."
             }
         }
         .onChange(of: address) { _ in
             loadResidentLookAround()
         }
-
         .onChange(of: selectedPhotoItem) { newItem in
             guard let newItem else {
                 selectedImage = nil
@@ -181,6 +205,18 @@ struct RequestView: View {
             manualVendorPhone = ""
             uploadMessage = ""
             syncVendorSelectionForService()
+        }
+    }
+    var body: some View {
+        Group {
+            if accountType == "vendor",
+            vendorId > 0 {
+                VendorCompletedProjectsView(
+                    vendorId: vendorId
+                )
+            } else {
+                residentSubmissionScreen
+            }
         }
     }
 
