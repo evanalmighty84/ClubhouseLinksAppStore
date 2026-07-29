@@ -787,7 +787,7 @@ private struct VendorCompletedProjectCard: View {
         )
     }
 
-    @ViewBuilder
+
     @ViewBuilder
     private var projectImage: some View {
         ZStack {
