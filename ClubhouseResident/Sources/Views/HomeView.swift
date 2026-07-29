@@ -104,7 +104,7 @@ struct HomeView: View {
 
 // MARK: - Logo to Clubhouse Transition
 
-private struct HomeIntroImageView: View {
+ struct HomeIntroImageView: View {
     @State private var showClubhouse = false
     @State private var hasStarted = false
 

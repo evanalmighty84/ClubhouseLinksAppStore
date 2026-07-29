@@ -1,9 +1,7 @@
 import SwiftUI
-import PhotosUI
-import UIKit
 
 struct VendorHomeView: View {
-    // MARK: - Stored Account Values
+    // MARK: - Stored Vendor Account
 
     @AppStorage("vendorId")
     private var vendorId = 0
@@ -17,9 +15,6 @@ struct VendorHomeView: View {
     @AppStorage("vendorLogoURL")
     private var storedLogoURL = ""
 
-    // Replace this with the exact asset name used in HomeView.
-    private let clubhouseImageAssetName = "clubhouse"
-
     // MARK: - Profile State
 
     @State private var vendor: VendorAccount?
@@ -27,48 +22,41 @@ struct VendorHomeView: View {
     @State private var isLoadingProfile = false
     @State private var profileErrorMessage = ""
 
-    // MARK: - Request State
+    // MARK: - Service Request State
 
     @State private var newRequestCount = 0
     @State private var isLoadingRequests = false
 
-    // MARK: - Logo State
-
-    @State private var selectedLogoItem: PhotosPickerItem?
-    @State private var isShowingLogoPicker = false
-    @State private var isUploadingLogo = false
-    @State private var logoMessage = ""
-
-    // MARK: - Computed Values
+    // MARK: - Computed Display Values
 
     private var companyName: String {
-        let profileValue = vendor?.company_name
+        let profileName = vendor?.company_name
         .trimmingCharacters(
             in: .whitespacesAndNewlines
         ) ?? ""
 
-        if !profileValue.isEmpty {
-            return profileValue
+        if !profileName.isEmpty {
+            return profileName
         }
 
-        let storedValue = storedCompanyName
+        let storedName = storedCompanyName
         .trimmingCharacters(
             in: .whitespacesAndNewlines
         )
 
-        return storedValue.isEmpty
+        return storedName.isEmpty
         ? "Vendor Account"
-        : storedValue
+        : storedName
     }
 
     private var categoryName: String {
-        let profileValue = vendor?.category?
+        let profileCategory = vendor?.category?
         .trimmingCharacters(
             in: .whitespacesAndNewlines
         ) ?? ""
 
-        if !profileValue.isEmpty {
-            return profileValue
+        if !profileCategory.isEmpty {
+            return profileCategory
         }
 
         return storedCategory
@@ -78,38 +66,23 @@ struct VendorHomeView: View {
     }
 
     private var logoURLString: String? {
-        let profileValue = vendor?.logo_url?
+        let profileLogo = vendor?.logo_url?
         .trimmingCharacters(
             in: .whitespacesAndNewlines
         ) ?? ""
 
-        if !profileValue.isEmpty {
-            return profileValue
+        if !profileLogo.isEmpty {
+            return profileLogo
         }
 
-        let storedValue = storedLogoURL
+        let storedLogo = storedLogoURL
         .trimmingCharacters(
             in: .whitespacesAndNewlines
         )
 
-        return storedValue.isEmpty
+        return storedLogo.isEmpty
         ? nil
-        : storedValue
-    }
-
-    private var logoMessageColor: Color {
-        let normalized = logoMessage.lowercased()
-
-        if normalized.contains("could not") ||
-        normalized.contains("invalid") ||
-        normalized.contains("too large") ||
-        normalized.contains("not found") ||
-        normalized.contains("failed") ||
-        normalized.contains("error") {
-            return .red
-        }
-
-        return .cyan
+        : storedLogo
     }
 
     // MARK: - Body
@@ -118,47 +91,39 @@ struct VendorHomeView: View {
         NavigationStack {
             NeonBackground {
                 ScrollView {
-                    VStack(
-                        alignment: .leading,
-                        spacing: 22
-                    ) {
+                    VStack(spacing: 24) {
                         header
 
                         vendorLogoCard
 
-                        clubhousePhotoCard
+                        /*
+                         * This is the same transition used by the
+                         * regular resident-facing HomeView:
+                         *
+                         * clubhouse_app_icon -> hoa
+                         */
+                        HomeIntroImageView()
+                        .frame(height: 250)
+
+                        clubhouseDescription
 
                         requestInboxCard
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 12)
-                    .padding(.bottom, 190)
+                    .padding()
+                    .padding(.bottom, 175)
                 }
+                .scrollIndicators(.hidden)
                 .refreshable {
                     await refreshVendorHome()
                 }
-                .scrollIndicators(.hidden)
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar(
+                .hidden,
+                for: .navigationBar
+            )
         }
         .task(id: vendorId) {
             await refreshVendorHome()
-        }
-        .photosPicker(
-            isPresented: $isShowingLogoPicker,
-            selection: $selectedLogoItem,
-            matching: .images
-        )
-        .onChange(of: selectedLogoItem) { newItem in
-            guard let newItem else {
-                return
-            }
-
-            Task {
-                await prepareAndUploadLogo(
-                    from: newItem
-                )
-            }
         }
     }
 
@@ -181,8 +146,8 @@ struct VendorHomeView: View {
             .font(.largeTitle.bold())
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
-            .minimumScaleFactor(0.62)
             .lineLimit(2)
+            .minimumScaleFactor(0.58)
             .frame(maxWidth: .infinity)
 
             if !categoryName.isEmpty {
@@ -201,7 +166,7 @@ struct VendorHomeView: View {
             if !profileErrorMessage.isEmpty {
                 Text(profileErrorMessage)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.red.opacity(0.92))
+                .foregroundStyle(.red)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
             }
@@ -210,7 +175,9 @@ struct VendorHomeView: View {
 
     private var accountSettingsButton: some View {
         HStack(spacing: 8) {
-            Image(systemName: "gearshape.fill")
+            Image(
+                systemName: "gearshape.fill"
+            )
 
             Text("Account Settings")
         }
@@ -218,49 +185,32 @@ struct VendorHomeView: View {
         .foregroundStyle(.cyan)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(.white.opacity(0.09))
+        .background(
+            .white.opacity(0.09)
+        )
         .clipShape(Capsule())
-        .overlay(
+        .overlay {
             Capsule()
             .stroke(
                 .cyan.opacity(0.42),
                 lineWidth: 1
             )
-        )
+        }
     }
 
-    // MARK: - Vendor Logo Card
+    // MARK: - Vendor Logo
 
     private var vendorLogoCard: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 14) {
             if let logoURLString,
-            let logoURL = URL(string: logoURLString) {
-                uploadedLogoContent(
-                    logoURL: logoURL
+            let logoURL = URL(
+                string: logoURLString
+            ) {
+                uploadedVendorLogo(
+                    url: logoURL
                 )
             } else {
-                uploadLogoContent
-            }
-
-            if isUploadingLogo {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    .tint(.cyan)
-
-                    Text("Uploading company logo...")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(
-                        .white.opacity(0.80)
-                    )
-                }
-            }
-
-            if !logoMessage.isEmpty {
-                Text(logoMessage)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(logoMessageColor)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
+                missingVendorLogo
             }
         }
         .padding(20)
@@ -276,10 +226,16 @@ struct VendorHomeView: View {
             )
         )
         .clipShape(
-            RoundedRectangle(cornerRadius: 28)
+            RoundedRectangle(
+                cornerRadius: 28,
+                style: .continuous
+            )
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 28)
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: 28,
+                style: .continuous
+            )
             .stroke(
                 LinearGradient(
                     colors: [
@@ -291,110 +247,101 @@ struct VendorHomeView: View {
                 ),
                 lineWidth: 1.3
             )
-        )
+        }
         .shadow(
             color: .cyan.opacity(0.18),
             radius: 12
         )
     }
 
-    private func uploadedLogoContent(
-    logoURL: URL
+    private func uploadedVendorLogo(
+    url: URL
     ) -> some View {
-        VStack(spacing: 16) {
-            AsyncImage(url: logoURL) { phase in
-                switch phase {
-                case .empty:
-                    ProgressView()
-                    .tint(.cyan)
-                    .frame(
-                        maxWidth: .infinity
-                    )
-                    .frame(height: 210)
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case .empty:
+                ProgressView()
+                .tint(.cyan)
+                .frame(maxWidth: .infinity)
+                .frame(height: 220)
 
-                case .success(let image):
-                    image
-                    .resizable()
-                    .scaledToFit()
-                    .padding(18)
-                    .frame(
-                        maxWidth: .infinity
-                    )
-                    .frame(height: 210)
-                    .background(
-                        .white.opacity(0.95)
-                    )
-                    .clipShape(
-                        RoundedRectangle(
-                            cornerRadius: 22
-                        )
-                    )
-
-                case .failure:
-                    logoLoadFailureContent
-
-                @unknown default:
-                    logoLoadFailureContent
-                }
-            }
-
-            Button {
-                isShowingLogoPicker = true
-            } label: {
-                Label(
-                    "Change Company Logo",
-                    systemImage: "photo.badge.plus"
-                )
-                .font(.subheadline.bold())
-                .foregroundStyle(.cyan)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 11)
+            case .success(let image):
+                image
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .padding(18)
+                .frame(maxWidth: .infinity)
+                .frame(height: 220)
                 .background(
-                    .black.opacity(0.22)
+                    .white.opacity(0.96)
                 )
-                .clipShape(Capsule())
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 22,
+                        style: .continuous
+                    )
+                )
+
+            case .failure:
+                vendorLogoLoadFailure
+
+            @unknown default:
+                vendorLogoLoadFailure
             }
-            .buttonStyle(.plain)
-            .disabled(isUploadingLogo)
         }
     }
 
-    private var logoLoadFailureContent: some View {
-        VStack(spacing: 12) {
+    private var vendorLogoLoadFailure: some View {
+        VStack(spacing: 14) {
             Image(
                 systemName:
-                "exclamationmark.triangle.fill"
+                "photo.badge.exclamationmark"
             )
-            .font(.system(size: 42))
+            .font(.system(size: 48))
             .foregroundStyle(.orange)
 
-            Text("Could not load company logo.")
-            .font(.subheadline.bold())
-            .foregroundStyle(.white)
-
-            Button("Choose Another Logo") {
-                isShowingLogoPicker = true
-            }
-            .font(.subheadline.bold())
-            .foregroundStyle(.cyan)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 210)
-    }
-
-    private var uploadLogoContent: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "photo.badge.plus")
-            .font(.system(size: 54))
-            .foregroundStyle(.cyan)
-
-            Text("Upload Company Logo")
-            .font(.title2.bold())
+            Text("Company Logo Unavailable")
+            .font(.title3.bold())
             .foregroundStyle(.white)
 
             Text(
-                "Add your company logo so residents " +
-                "can recognize your business."
+                "Open Account Settings to upload " +
+                "or replace your company logo."
+            )
+            .font(.subheadline)
+            .foregroundStyle(
+                .white.opacity(0.72)
+            )
+            .multilineTextAlignment(.center)
+
+            NavigationLink {
+                AccountSettingsView()
+            } label: {
+                settingsLogoButton
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 220)
+    }
+
+    private var missingVendorLogo: some View {
+        VStack(spacing: 14) {
+            Image(
+                systemName: "photo.badge.plus"
+            )
+            .font(.system(size: 50))
+            .foregroundStyle(.cyan)
+
+            Text("Add Your Company Logo")
+            .font(.title3.bold())
+            .foregroundStyle(.white)
+
+            Text(
+                "Upload your company logo from Account " +
+                "Settings so residents can recognize " +
+                "your business."
             )
             .font(.subheadline)
             .foregroundStyle(
@@ -406,43 +353,51 @@ struct VendorHomeView: View {
                 vertical: true
             )
 
-            Button {
-                isShowingLogoPicker = true
+            NavigationLink {
+                AccountSettingsView()
             } label: {
-                Text("Choose Logo")
-                .font(.headline.bold())
-                .foregroundStyle(.white)
-                .padding(.horizontal, 30)
-                .padding(.vertical, 13)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            .cyan,
-                            .purple
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .clipShape(Capsule())
+                settingsLogoButton
             }
             .buttonStyle(.plain)
-            .disabled(isUploadingLogo)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
-        .frame(minHeight: 230)
+        .frame(minHeight: 220)
     }
 
-    // MARK: - Clubhouse Photo Card
+    private var settingsLogoButton: some View {
+        Label(
+            "Open Account Settings",
+            systemImage: "gearshape.fill"
+        )
+        .font(.headline.bold())
+        .foregroundStyle(.white)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 12)
+        .background(
+            LinearGradient(
+                colors: [
+                    .cyan,
+                    .purple
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+        .clipShape(Capsule())
+    }
 
-    private var clubhousePhotoCard: some View {
-        VStack(spacing: 16) {
-            clubhousePhoto
+    // MARK: - Clubhouse Description
 
+    private var clubhouseDescription: some View {
+        VStack(spacing: 7) {
             Text("Clubhouse Links")
-            .font(.title2.bold())
+            .font(.largeTitle.bold())
             .foregroundStyle(.white)
+
+            Text("Home Services")
+            .font(.title2.bold())
+            .foregroundStyle(.cyan)
 
             Text(
                 "Connecting your business with homeowners, " +
@@ -460,91 +415,17 @@ struct VendorHomeView: View {
                 vertical: true
             )
         }
-        .padding(20)
         .frame(maxWidth: .infinity)
-        .background(
-            LinearGradient(
-                colors: [
-                    .cyan.opacity(0.11),
-                    .purple.opacity(0.23)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(
-            RoundedRectangle(cornerRadius: 28)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 28)
-            .stroke(
-                LinearGradient(
-                    colors: [
-                        .cyan,
-                        .purple
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 1.2
-            )
-        )
     }
 
-    @ViewBuilder
-    private var clubhousePhoto: some View {
-        if let clubhouseImage = UIImage(
-            named: clubhouseImageAssetName
-        ) {
-            Image(uiImage: clubhouseImage)
-            .resizable()
-            .scaledToFill()
-            .frame(maxWidth: .infinity)
-            .frame(height: 245)
-            .clipped()
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: 22
-                )
-            )
-        } else {
-            ZStack {
-                RoundedRectangle(
-                    cornerRadius: 22
-                )
-                .fill(.black.opacity(0.24))
-
-                VStack(spacing: 12) {
-                    Image(
-                        systemName:
-                        "building.2.crop.circle.fill"
-                    )
-                    .font(.system(size: 50))
-                    .foregroundStyle(.cyan)
-
-                    Text(
-                        "Set clubhouseImageAssetName " +
-                        "to the image used by HomeView."
-                    )
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(
-                        .white.opacity(0.72)
-                    )
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 245)
-        }
-    }
-
-    // MARK: - Request Inbox Card
+    // MARK: - Request Inbox
 
     private var requestInboxCard: some View {
         VStack(spacing: 18) {
             ZStack(alignment: .topTrailing) {
-                Image(systemName: "bell.badge.fill")
+                Image(
+                    systemName: "bell.badge.fill"
+                )
                 .font(.system(size: 58))
                 .foregroundStyle(.cyan)
 
@@ -575,9 +456,7 @@ struct VendorHomeView: View {
             if isLoadingRequests {
                 ProgressView()
                 .tint(.cyan)
-            }
-
-            if newRequestCount > 0 {
+            } else if newRequestCount > 0 {
                 Text(
                     newRequestCount == 1
                     ? "You have 1 new request."
@@ -608,8 +487,7 @@ struct VendorHomeView: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(
-                        systemName:
-                        "tray.full.fill"
+                        systemName: "tray.full.fill"
                     )
 
                     Text("Open Request Inbox")
@@ -617,7 +495,9 @@ struct VendorHomeView: View {
                     if newRequestCount > 0 {
                         Spacer()
 
-                        Text("\(newRequestCount) New")
+                        Text(
+                            "\(newRequestCount) New"
+                        )
                         .font(.caption.bold())
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -643,7 +523,8 @@ struct VendorHomeView: View {
                 )
                 .clipShape(
                     RoundedRectangle(
-                        cornerRadius: 20
+                        cornerRadius: 20,
+                        style: .continuous
                     )
                 )
             }
@@ -662,31 +543,29 @@ struct VendorHomeView: View {
             )
         )
         .clipShape(
-            RoundedRectangle(cornerRadius: 28)
+            RoundedRectangle(
+                cornerRadius: 28,
+                style: .continuous
+            )
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 28)
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: 28,
+                style: .continuous
+            )
             .stroke(
                 .cyan.opacity(0.54),
                 lineWidth: 1.2
             )
-        )
+        }
     }
 
-    // MARK: - Refreshing
+    // MARK: - Refresh
 
     @MainActor
     private func refreshVendorHome() async {
-        async let profileTask: Void =
-        loadVendorProfile()
-
-        async let requestTask: Void =
-        loadRequestCount()
-
-        _ = await (
-        profileTask,
-        requestTask
-        )
+        await loadVendorProfile()
+        await loadRequestCount()
     }
 
     // MARK: - Vendor Profile
@@ -730,7 +609,8 @@ struct VendorHomeView: View {
 
         request.setValue(
             "no-cache",
-            forHTTPHeaderField: "Cache-Control"
+            forHTTPHeaderField:
+            "Cache-Control"
         )
 
         do {
@@ -803,7 +683,8 @@ struct VendorHomeView: View {
         let urlString =
         "https://crm-function-app-5d4de511071d.herokuapp.com" +
         "/server/resident_function/api/vendors/" +
-        "\(vendorId)/service-requests?limit=1&offset=0"
+        "\(vendorId)/service-requests" +
+        "?limit=1&offset=0"
 
         guard let url = URL(
             string: urlString
@@ -818,7 +699,8 @@ struct VendorHomeView: View {
 
         request.setValue(
             "no-cache",
-            forHTTPHeaderField: "Cache-Control"
+            forHTTPHeaderField:
+            "Cache-Control"
         )
 
         do {
@@ -856,218 +738,6 @@ struct VendorHomeView: View {
             print(
                 "Vendor request count error:",
                 error.localizedDescription
-            )
-        }
-    }
-
-    // MARK: - Logo Preparation
-
-    @MainActor
-    private func prepareAndUploadLogo(
-    from item: PhotosPickerItem
-    ) async {
-        guard vendorId > 0 else {
-            logoMessage =
-            "Vendor account not found."
-            return
-        }
-
-        guard !isUploadingLogo else {
-            return
-        }
-
-        isUploadingLogo = true
-        logoMessage = ""
-
-        defer {
-            isUploadingLogo = false
-            selectedLogoItem = nil
-        }
-
-        do {
-            guard let originalData =
-            try await item.loadTransferable(
-                type: Data.self
-            ),
-            let originalImage =
-            UIImage(
-                data: originalData
-            ) else {
-                logoMessage =
-                "Could not load the selected logo."
-                return
-            }
-
-            let resizedLogo = resizedImage(
-                originalImage,
-                maxDimension: 1000
-            )
-
-            guard let jpegData =
-            resizedLogo.jpegData(
-                compressionQuality: 0.78
-            ) else {
-                logoMessage =
-                "Could not prepare the selected logo."
-                return
-            }
-
-            guard jpegData.count <=
-            8_000_000 else {
-                logoMessage =
-                "The selected logo is too large."
-                return
-            }
-
-            let encodedImage =
-            jpegData.base64EncodedString()
-
-            let imageDataURL =
-            "data:image/jpeg;base64," +
-            encodedImage
-
-            await uploadLogo(
-                imageDataURL
-            )
-        } catch is CancellationError {
-            return
-        } catch {
-            logoMessage =
-            "Could not load the selected logo."
-        }
-    }
-
-    // MARK: - Logo Upload
-
-    @MainActor
-    private func uploadLogo(
-    _ imageDataURL: String
-    ) async {
-        let urlString =
-        "https://crm-function-app-5d4de511071d.herokuapp.com" +
-        "/server/resident_function/api/vendors/" +
-        "\(vendorId)/logo"
-
-        guard let url = URL(
-            string: urlString
-        ) else {
-            logoMessage =
-            "Invalid logo upload URL."
-            return
-        }
-
-        var request = URLRequest(url: url)
-
-        request.httpMethod = "PATCH"
-
-        request.setValue(
-            "application/json",
-            forHTTPHeaderField: "Content-Type"
-        )
-
-        do {
-            request.httpBody =
-            try JSONSerialization.data(
-                withJSONObject: [
-                    "image_base64":
-                    imageDataURL
-                ],
-                options: []
-            )
-
-            let (data, response) =
-            try await URLSession.shared.data(
-                for: request
-            )
-
-            guard let httpResponse =
-            response as? HTTPURLResponse else {
-                logoMessage =
-                "Invalid response from server."
-                return
-            }
-
-            let decoded =
-            try JSONDecoder().decode(
-                VendorLogoUploadResponse.self,
-                from: data
-            )
-
-            guard (200...299).contains(
-                httpResponse.statusCode
-            ),
-            decoded.success == true else {
-                logoMessage =
-                decoded.error ??
-                "Could not upload company logo."
-
-                return
-            }
-
-            if let updatedVendor =
-            decoded.vendor {
-                vendor = updatedVendor
-
-                saveVendorLocally(
-                    updatedVendor
-                )
-            } else if let uploadedLogoURL =
-            decoded.logo_url {
-                storedLogoURL =
-                uploadedLogoURL
-            }
-
-            logoMessage =
-            decoded.message ??
-            "Company logo updated successfully."
-        } catch {
-            logoMessage =
-            error.localizedDescription
-        }
-    }
-
-    // MARK: - Image Resizing
-
-    private func resizedImage(
-    _ image: UIImage,
-    maxDimension: CGFloat
-    ) -> UIImage {
-        let originalSize = image.size
-
-        let largestDimension = max(
-            originalSize.width,
-            originalSize.height
-        )
-
-        guard largestDimension >
-        maxDimension else {
-            return image
-        }
-
-        let scale =
-        maxDimension /
-        largestDimension
-
-        let newSize = CGSize(
-            width:
-            originalSize.width *
-            scale,
-            height:
-            originalSize.height *
-            scale
-        )
-
-        let renderer =
-        UIGraphicsImageRenderer(
-            size: newSize
-        )
-
-        return renderer.image { _ in
-            image.draw(
-                in: CGRect(
-                    origin: .zero,
-                    size: newSize
-                )
             )
         }
     }
