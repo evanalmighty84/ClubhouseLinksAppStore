@@ -40,11 +40,7 @@ struct RequestView: View {
 
     @State private var photoPickerResetID = UUID()
     @State private var photoLoadToken = UUID()
-    @AppStorage("accountType")
-    private var accountType = ""
 
-    @AppStorage("vendorId")
-    private var vendorId = 0
 
     @AppStorage("vendorCompanyName")
     private var vendorCompanyName = ""
