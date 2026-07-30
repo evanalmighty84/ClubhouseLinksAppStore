@@ -9,7 +9,6 @@ struct SubmitCompletedProjectResponse: Codable {
     let message: String?
     let error: String?
 }
-
 struct RequestView: View {
     @AppStorage("residentId") private var residentId = 0
     @AppStorage("residentFirstName") private var firstName = ""
@@ -17,6 +16,11 @@ struct RequestView: View {
     @AppStorage("residentPhone") private var phone = ""
     @AppStorage("residentAddress") private var address = ""
     @AppStorage("residentSelectedTab") private var selectedTab = "home"
+    @AppStorage("accountType")
+    private var accountType = ""
+
+    @AppStorage("vendorId")
+    private var vendorId = 0
 
     @State private var selectedService = "Painting"
     @State private var selectedVendorId = 0
@@ -34,6 +38,23 @@ struct RequestView: View {
     @State private var manualVendorName = ""
     @State private var manualVendorPhone = ""
 
+    @State private var photoPickerResetID = UUID()
+    @State private var photoLoadToken = UUID()
+
+
+    @AppStorage("vendorCompanyName")
+    private var vendorCompanyName = ""
+
+    private let vendorNotListedId = -1
+    private var isVendorAccount: Bool {
+        accountType
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        .lowercased() == "vendor"
+        &&
+        vendorId > 0
+    }
     private let fallbackServiceOptions = [
         "Painting",
         "Pool Service",
@@ -113,8 +134,7 @@ struct RequestView: View {
 
         return name.isEmpty ? "Your Home" : name
     }
-
-    var body: some View {
+    private var residentSubmissionScreen: some View {
         NeonBackground {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -122,7 +142,11 @@ struct RequestView: View {
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
 
-                    Text("Share a finished project from a contractor you used so nearby neighbors can discover trusted home service providers.")
+                    Text(
+                        "Share a finished project from a contractor " +
+                        "you used so nearby neighbors can discover " +
+                        "trusted home service providers."
+                    )
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.78))
                     .lineSpacing(3)
@@ -154,13 +178,19 @@ struct RequestView: View {
                 vendorOptions = []
                 selectedVendorId = 0
                 vendorOptionsLoading = false
-                vendorOptionsError = "Resident profile not found."
+                vendorOptionsError =
+                "Resident profile not found."
             }
         }
         .onChange(of: address) { _ in
             loadResidentLookAround()
         }
         .onChange(of: selectedPhotoItem) { newItem in
+            guard let newItem else {
+                selectedImage = nil
+                return
+            }
+
             loadSelectedPhoto(from: newItem)
         }
         .onChange(of: selectedVendorId) { _ in
@@ -171,6 +201,18 @@ struct RequestView: View {
             manualVendorPhone = ""
             uploadMessage = ""
             syncVendorSelectionForService()
+        }
+    }
+    var body: some View {
+        Group {
+            if accountType == "vendor",
+            vendorId > 0 {
+                VendorCompletedProjectsView(
+                    vendorId: vendorId
+                )
+            } else {
+                residentSubmissionScreen
+            }
         }
     }
 
@@ -185,6 +227,28 @@ struct RequestView: View {
         } else {
             birdAddressFallbackCard
         }
+    }
+
+    @MainActor
+    private func clearSelectedProjectPhoto() {
+        // Invalidates any older photo-loading task.
+        photoLoadToken = UUID()
+
+        selectedPhotoItem = nil
+        selectedImage = nil
+
+        // Forces SwiftUI to create a fresh PhotosPicker.
+        photoPickerResetID = UUID()
+    }
+
+    @MainActor
+    private func resetProjectFormAfterSubmission() {
+        clearSelectedProjectPhoto()
+
+        manualVendorName = ""
+        manualVendorPhone = ""
+
+        uploadMessage = ""
     }
 
     private func lookAroundAddressCard(
@@ -471,16 +535,25 @@ struct RequestView: View {
             .foregroundStyle(.cyan)
 
             if vendorOptionsLoading {
-                ProgressView()
-                .tint(.cyan)
-                .padding(.vertical, 12)
-            } else if !vendorOptionsError.isEmpty {
-                Text(vendorOptionsError)
-                .font(.caption)
-                .foregroundStyle(.red.opacity(0.9))
-            } else if filteredVendorOptions.isEmpty {
-                manualVendorEntrySection
+                HStack(spacing: 10) {
+                    ProgressView()
+                    .tint(.cyan)
+
+                    Text("Loading vendors...")
+                    .foregroundStyle(.white.opacity(0.70))
+                }
+                .padding()
             } else {
+                if !vendorOptionsError.isEmpty {
+                    Text(vendorOptionsError)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .fixedSize(
+                        horizontal: false,
+                        vertical: true
+                    )
+                }
+
                 Picker(
                     "Vendor",
                     selection: $selectedVendorId
@@ -489,6 +562,9 @@ struct RequestView: View {
                         Text(vendor.company_name)
                         .tag(vendor.id)
                     }
+
+                    Text("Vendor Not Listed")
+                    .tag(vendorNotListedId)
                 }
                 .pickerStyle(.menu)
                 .tint(.cyan)
@@ -501,8 +577,72 @@ struct RequestView: View {
                 .clipShape(
                     RoundedRectangle(cornerRadius: 18)
                 )
+
+                if selectedVendorId == vendorNotListedId {
+                    VStack(alignment: .leading, spacing: 14) {
+                        TextField(
+                            "Company Name",
+                            text: $manualVendorName
+                        )
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .padding()
+                        .foregroundStyle(.white)
+                        .background(.black.opacity(0.22))
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: 18)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                            .stroke(
+                                .cyan.opacity(0.45),
+                                lineWidth: 1
+                            )
+                        )
+
+                        TextField(
+                            "Company Phone",
+                            text: $manualVendorPhone
+                        )
+                        .keyboardType(.phonePad)
+                        .textContentType(.telephoneNumber)
+                        .padding()
+                        .foregroundStyle(.white)
+                        .background(.black.opacity(0.22))
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: 18)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                            .stroke(
+                                .cyan.opacity(0.45),
+                                lineWidth: 1
+                            )
+                        )
+
+                        Text(
+                            "This contractor will be added to Clubhouse Links " +
+                            "and given the default Clubhouse Links logo."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.66))
+                        .fixedSize(
+                            horizontal: false,
+                            vertical: true
+                        )
+                    }
+                    .transition(
+                        .opacity.combined(
+                            with: .move(edge: .top)
+                        )
+                    )
+                }
             }
         }
+        .animation(
+            .easeInOut(duration: 0.22),
+            value: selectedVendorId
+        )
     }
 
     private var manualVendorEntrySection: some View {
@@ -623,6 +763,7 @@ struct RequestView: View {
                     }
                 }
             }
+            .id(photoPickerResetID)
             .buttonStyle(.plain)
         }
     }
@@ -834,27 +975,21 @@ struct RequestView: View {
                         vendorOptions = decoded.vendors ?? []
                         vendorOptionsError = ""
 
-                        if selectedVendorId == 0,
-                        let firstVendor = vendorOptions.first {
-                            selectedVendorId = firstVendor.id
-                            selectedService = firstVendor.category ?? selectedService
-                        } else {
-                            syncVendorSelectionForService()
-                        }
+                        syncVendorSelectionForService()
                     } else {
                         vendorOptions = []
-                        selectedVendorId = 0
-                        vendorOptionsError = decoded.error ?? "Could not load vendors."
+                        selectedVendorId = vendorNotListedId
+                        vendorOptionsError =
+                        decoded.error ??
+                        "Could not load listed vendors. You can still enter a vendor manually."
                     }
                 }
             } catch {
                 DispatchQueue.main.async {
                     vendorOptions = []
-                    selectedVendorId = 0
-                    vendorOptionsError = String(
-                        data: data,
-                        encoding: .utf8
-                    ) ?? "Could not decode vendors."
+                    selectedVendorId = vendorNotListedId
+                    vendorOptionsError =
+                    "Could not load listed vendors. You can still enter a vendor manually."
                 }
 
                 print(error)
@@ -871,8 +1006,8 @@ struct RequestView: View {
     }
 
     private func syncVendorSelectionForService() {
-        guard !filteredVendorOptions.isEmpty else {
-            selectedVendorId = 0
+        // Keep the resident's manual-vendor choice selected.
+        if selectedVendorId == vendorNotListedId {
             return
         }
 
@@ -880,9 +1015,13 @@ struct RequestView: View {
             $0.id == selectedVendorId
         }
 
-        if !currentSelectionIsValid {
-            selectedVendorId = filteredVendorOptions.first?.id ?? 0
+        if currentSelectionIsValid {
+            return
         }
+
+        selectedVendorId =
+        filteredVendorOptions.first?.id ??
+        vendorNotListedId
     }
 
     private func syncServiceToSelectedVendor() {
@@ -943,12 +1082,8 @@ struct RequestView: View {
             return
         }
 
-        guard vendorOptionsError.isEmpty else {
-            uploadMessage = vendorOptionsError
-            return
-        }
-
-        let isEnteringManualVendor = filteredVendorOptions.isEmpty
+        let isEnteringManualVendor =
+        selectedVendorId == vendorNotListedId
 
         if isEnteringManualVendor {
             guard !cleanManualVendorName.isEmpty else {
@@ -1057,20 +1192,28 @@ struct RequestView: View {
 
                 DispatchQueue.main.async {
                     if decoded.success == true {
-                        uploadMessage = decoded.message ?? "Completed project submitted for review."
+                        let successMessage =
+                        decoded.message ??
+                        "Completed project submitted for review."
 
-                        selectedPhotoItem = nil
-                        selectedImage = nil
-                        manualVendorName = ""
-                        manualVendorPhone = ""
+                        resetProjectFormAfterSubmission()
+
+                        uploadMessage = successMessage
+                        NotificationCenter.default.post(
+                            name: .completedProjectSubmitted,
+                            object: nil
+                        )
 
                         DispatchQueue.main.asyncAfter(
                             deadline: .now() + 0.9
                         ) {
+                            uploadMessage = ""
                             selectedTab = "home"
                         }
                     } else {
-                        uploadMessage = decoded.error ?? "Could not submit completed project."
+                        uploadMessage =
+                        decoded.error ??
+                        "Could not submit completed project."
                     }
                 }
             } catch {
@@ -1099,7 +1242,14 @@ struct RequestView: View {
 }
 
 // MARK: - Request Look Around UIKit Wrapper
-
+struct CompletedProjectSubmissionPayload: Encodable {
+    let resident_id: Int
+    let vendor_id: Int?
+    let vendor_name: String?
+    let vendor_phone: String?
+    let category: String
+    let image_base64: String
+}
 private struct RequestLookAroundControllerView:
 UIViewControllerRepresentable {
 
