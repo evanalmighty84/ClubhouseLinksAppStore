@@ -2,6 +2,13 @@ import SwiftUI
 
 struct ResidentPortalView: View {
     @AppStorage("residentSelectedTab") private var selectedTab = "home"
+    @AppStorage("accountType") private var accountType = ""
+
+    private var isVendorAccount: Bool {
+        accountType
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased() == "vendor"
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -26,7 +33,10 @@ struct ResidentPortalView: View {
                 RequestView()
             }
             .tabItem {
-                Label("Submit Job", systemImage: "paperplane.fill")
+                Label(
+                    isVendorAccount ? "Jobs Submitted" : "Submit Job",
+                    systemImage: "paperplane.fill"
+                )
             }
             .tag("submit")
 
@@ -34,7 +44,10 @@ struct ResidentPortalView: View {
                 ContactView()
             }
             .tabItem {
-                Label("Request Service", systemImage: "phone.fill")
+                Label(
+                    isVendorAccount ? "Service Requests" : "Request Service",
+                    systemImage: "phone.fill"
+                )
             }
             .tag("contact")
         }
