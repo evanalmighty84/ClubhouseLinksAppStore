@@ -27,6 +27,7 @@ struct VendorAccount: Decodable {
     let neighborhood_id: Int?
     let company_name: String
     let category: String?
+    let categories: [String]?
     let contact_name: String?
     let phone: String?
     let email: String?

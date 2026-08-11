@@ -67,32 +67,43 @@ struct RequestView: View {
     ]
 
     private var serviceOptions: [String] {
-        let vendorCategories = vendorOptions.compactMap { vendor -> String? in
-            guard let category = vendor.category else {
-                return nil
-            }
-
-            let cleanedCategory = category.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
-
-            return cleanedCategory.isEmpty ? nil : cleanedCategory
+        let vendorCategories = vendorOptions.flatMap { vendor in
+            services(for: vendor)
         }
 
-        return Array(Set(vendorCategories + fallbackServiceOptions)).sorted()
+        let normalizedFallbacks = fallbackServiceOptions.map {
+            canonicalService($0)
+        }
+
+        let allServiceKeys = Set(
+            vendorCategories + normalizedFallbacks
+        )
+
+        return allServiceKeys
+        .map(displayServiceName)
+        .sorted()
     }
 
     private var filteredVendorOptions: [Vendor] {
-        let normalizedService = selectedService
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-        .lowercased()
+        let selectedKey = canonicalService(selectedService)
 
-        return vendorOptions.filter { vendor in
-            let normalizedCategory = (vendor.category ?? "")
+        let matchingVendors = vendorOptions.filter { vendor in
+            services(for: vendor).contains(selectedKey)
+        }
+
+        var seenCompanies = Set<String>()
+
+        return matchingVendors.filter { vendor in
+            let companyKey = vendor.company_name
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
 
-            return normalizedCategory == normalizedService
+            guard !seenCompanies.contains(companyKey) else {
+                return false
+            }
+
+            seenCompanies.insert(companyKey)
+            return true
         }
     }
 
@@ -249,6 +260,57 @@ struct RequestView: View {
         manualVendorPhone = ""
 
         uploadMessage = ""
+    }
+    private func canonicalService(_ raw: String) -> String {
+        let value = raw
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+        .replacingOccurrences(of: "-", with: "_")
+        .replacingOccurrences(of: " ", with: "_")
+
+        switch value {
+        case "roofing", "roofer", "roofing_contractor":
+            return "roofer"
+
+        case "general_contractor", "generalcontractor":
+            return "general_contractor"
+
+        default:
+            return value
+        }
+    }
+    private func displayServiceName(_ key: String) -> String {
+        switch canonicalService(key) {
+        case "roofer":
+            return "Roofing"
+
+        case "general_contractor":
+            return "General Contractor"
+
+        case "pool_service":
+            return "Pool Service"
+
+        default:
+            return key
+            .replacingOccurrences(of: "_", with: " ")
+            .split(separator: " ")
+            .map { $0.capitalized }
+            .joined(separator: " ")
+        }
+    }
+
+    private func services(for vendor: Vendor) -> [String] {
+        if let categories = vendor.categories,
+        !categories.isEmpty {
+            return categories.map(canonicalService)
+        }
+
+        if let category = vendor.category,
+        !category.isEmpty {
+            return [canonicalService(category)]
+        }
+
+        return []
     }
 
     private func lookAroundAddressCard(
@@ -559,7 +621,21 @@ struct RequestView: View {
                     selection: $selectedVendorId
                 ) {
                     ForEach(filteredVendorOptions) { vendor in
-                        Text(vendor.company_name)
+                        HStack(spacing: 8) {
+                            Text(vendor.company_name)
+
+                            Spacer()
+
+                            if (vendor.signup_count ?? 0) > 0 {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "star.fill")
+
+                                    Text("\(vendor.signup_count ?? 0)")
+                                }
+                                .foregroundStyle(.yellow)
+                                .font(.caption.bold())
+                            }
+                        }
                         .tag(vendor.id)
                     }
 
@@ -1029,9 +1105,22 @@ struct RequestView: View {
             return
         }
 
-        if let category = vendor.category,
-        !category.isEmpty {
-            selectedService = category
+        let selectedKey = canonicalService(selectedService)
+        let vendorServices = services(for: vendor)
+
+        /*
+         * If this vendor already supports the currently selected
+         * service, leave the service alone.
+         */
+        if vendorServices.contains(selectedKey) {
+            return
+        }
+
+        /*
+         * Otherwise fall back to the vendor's first supported service.
+         */
+        if let firstService = vendorServices.first {
+            selectedService = displayServiceName(firstService)
         }
     }
 
@@ -1122,7 +1211,7 @@ struct RequestView: View {
         let base64Image = imageData.base64EncodedString()
         let imageDataURL = "data:image/jpeg;base64,\(base64Image)"
 
-        let selectedCategory = selectedVendor()?.category ?? selectedService
+        let selectedCategory = canonicalService(selectedService)
 
         var payload: [String: Any] = [
             "resident_id": residentId,
