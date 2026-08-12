@@ -3,11 +3,14 @@ import SwiftUI
 struct ResidentPortalView: View {
     @AppStorage("residentSelectedTab") private var selectedTab = "home"
     @AppStorage("accountType") private var accountType = ""
+    @AppStorage("vendorId") private var vendorId = 0
 
     private var isVendorAccount: Bool {
-        accountType
+        let normalizedAccountType = accountType
         .trimmingCharacters(in: .whitespacesAndNewlines)
-        .lowercased() == "vendor"
+        .lowercased()
+
+        return normalizedAccountType == "vendor" || vendorId > 0
     }
 
     var body: some View {
@@ -51,6 +54,7 @@ struct ResidentPortalView: View {
             }
             .tag("contact")
         }
+        .id("\(accountType)-\(vendorId)")
         .tint(.cyan)
     }
 }
