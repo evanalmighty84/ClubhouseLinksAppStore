@@ -69,15 +69,29 @@ struct EventsView: View {
         }
     }
 
+
     @ViewBuilder
     private var signedInEvents: some View {
-        if viewModel.isLoading && viewModel.events.isEmpty {
-            loadingCard
-        } else if let errorMessage = viewModel.errorMessage,
-        viewModel.events.isEmpty {
-            errorCard(message: errorMessage)
-        } else {
-            eventsSections
+        VStack(alignment: .leading, spacing: 22) {
+            ResidentEventsIntroCard()
+
+            EventsCalendarCard(
+                events: viewModel.events
+            )
+
+            if viewModel.isLoading {
+                loadingCard
+            }
+
+            if let errorMessage = viewModel.errorMessage {
+                eventsUnavailableCard(
+                    message: errorMessage
+                )
+            }
+
+            if !viewModel.events.isEmpty {
+                eventsSections
+            }
         }
     }
 
@@ -96,18 +110,37 @@ struct EventsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
-    private func errorCard(message: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label(
-                "Events could not be loaded",
-                systemImage: "exclamationmark.triangle.fill"
+    private func eventsUnavailableCard(
+    message: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(
+                systemName:
+                "arrow.triangle.2.circlepath"
             )
-            .font(.headline)
-            .foregroundStyle(.yellow)
+            .font(.title3.bold())
+            .foregroundStyle(.orange)
 
-            Text(message)
-            .font(.subheadline)
-            .foregroundStyle(.white.opacity(0.7))
+            VStack(
+                alignment: .leading,
+                spacing: 3
+            ) {
+                Text(
+                    "Upcoming events are being updated"
+                )
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+
+                Text(
+                    "Pull down or tap refresh to check again."
+                )
+                .font(.caption)
+                .foregroundStyle(
+                    .white.opacity(0.65)
+                )
+            }
+
+            Spacer()
 
             Button {
                 Task {
@@ -116,24 +149,21 @@ struct EventsView: View {
                     )
                 }
             } label: {
-                Label("Try Again", systemImage: "arrow.clockwise")
-                .font(.subheadline.bold())
-                .foregroundStyle(.black)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(.yellow)
-                .clipShape(Capsule())
+                Image(
+                    systemName:
+                    "arrow.clockwise"
+                )
+                .foregroundStyle(.cyan)
             }
             .buttonStyle(.plain)
         }
         .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.07))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18)
-            .stroke(.yellow.opacity(0.65), lineWidth: 1.5)
+        .background(
+            .white.opacity(0.06)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .clipShape(
+            RoundedRectangle(cornerRadius: 18)
+        )
     }
 
     private var eventsSections: some View {
@@ -154,7 +184,123 @@ struct EventsView: View {
         }
     }
 }
+private struct ResidentEventsIntroCard: View {
 
+    private let imageURL = URL(
+        string:
+        "https://res.cloudinary.com/drna15e8q/image/upload/v1786591993/vendorevents_ypasxe.jpg"
+    )
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+
+            AsyncImage(url: imageURL) { phase in
+                switch phase {
+
+                case .empty:
+                    ZStack {
+                        Rectangle()
+                        .fill(.black.opacity(0.25))
+
+                        ProgressView()
+                        .tint(.cyan)
+                    }
+
+                case .success(let image):
+                    image
+                    .resizable()
+                    .scaledToFill()
+
+                case .failure:
+                    ZStack {
+                        LinearGradient(
+                            colors: [
+                                .cyan.opacity(0.25),
+                                .purple.opacity(0.35)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+
+                        Image(
+                            systemName:
+                            "calendar.badge.clock"
+                        )
+                        .font(.system(size: 50))
+                        .foregroundStyle(.cyan)
+                    }
+
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 230)
+            .clipped()
+
+            VStack(
+                alignment: .leading,
+                spacing: 10
+            ) {
+                Label(
+                    "Meet Local Home Service Professionals",
+                    systemImage: "person.3.fill"
+                )
+                .font(.title3.bold())
+                .foregroundStyle(.white)
+
+                Text(
+                    """
+                    Our events are a way for you to meet local home service technicians and contractors face-to-face. Get expert advice, ask questions about your home, and receive individual pricing for your newest projects and repairs.
+                    """
+                )
+                .font(.subheadline)
+                .foregroundStyle(
+                    .white.opacity(0.78)
+                )
+                .fixedSize(
+                    horizontal: false,
+                    vertical: true
+                )
+
+                Text(
+                    "Event dates are highlighted on the calendar below."
+                )
+                .font(.caption.bold())
+                .foregroundStyle(.cyan)
+            }
+            .padding(18)
+        }
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [
+                    .cyan.opacity(0.13),
+                    .purple.opacity(0.24)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(
+            RoundedRectangle(cornerRadius: 24)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+            .stroke(
+                LinearGradient(
+                    colors: [
+                        .cyan,
+                        .purple
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1.5
+            )
+        )
+    }
+}
 // MARK: - Signed-Out Promotional Content
 
 private struct SignedOutEventsPromotion: View {
@@ -265,6 +411,296 @@ private struct SignedOutEventsPromotion: View {
 }
 
 // MARK: - Event Sections
+private struct EventsCalendarCard: View {
+
+    let events: [NeighborhoodEvent]
+
+    @State private var displayedMonth = Date()
+
+    private let calendar = Calendar.current
+
+    private var monthTitle: String {
+        displayedMonth.formatted(
+            .dateTime
+            .month(.wide)
+            .year()
+        )
+    }
+
+    private var weekdaySymbols: [String] {
+        let symbols = calendar.veryShortWeekdaySymbols
+
+        let first = calendar.firstWeekday - 1
+
+        return Array(
+            symbols[first...] +
+            symbols[..<first]
+        )
+    }
+
+    private var days: [Date?] {
+        guard
+        let monthInterval =
+        calendar.dateInterval(
+            of: .month,
+            for: displayedMonth
+        ),
+        let firstWeek =
+        calendar.dateInterval(
+            of: .weekOfMonth,
+            for: monthInterval.start
+        )
+        else {
+            return []
+        }
+
+        var result: [Date?] = []
+
+        let monthStart = monthInterval.start
+
+        let daysBeforeMonth =
+        calendar.dateComponents(
+            [.day],
+            from: firstWeek.start,
+            to: monthStart
+        ).day ?? 0
+
+        for _ in 0..<max(0, daysBeforeMonth) {
+            result.append(nil)
+        }
+
+        let range =
+        calendar.range(
+            of: .day,
+            in: .month,
+            for: displayedMonth
+        ) ?? 1..<2
+
+        for dayNumber in range {
+            if let date = calendar.date(
+                bySetting: .day,
+                value: dayNumber,
+                of: displayedMonth
+            ) {
+                result.append(date)
+            }
+        }
+
+        while result.count % 7 != 0 {
+            result.append(nil)
+        }
+
+        return result
+    }
+
+    private func hasEvent(
+    on date: Date
+    ) -> Bool {
+        events.contains { event in
+            calendar.isDate(
+                event.startsAt,
+                inSameDayAs: date
+            )
+        }
+    }
+
+    private func isToday(
+    _ date: Date
+    ) -> Bool {
+        calendar.isDateInToday(date)
+    }
+
+    var body: some View {
+        VStack(
+            alignment: .leading,
+            spacing: 16
+        ) {
+
+            HStack {
+                Label(
+                    "Event Calendar",
+                    systemImage: "calendar"
+                )
+                .font(.title3.bold())
+                .foregroundStyle(.white)
+
+                Spacer()
+
+                Button {
+                    moveMonth(-1)
+                } label: {
+                    Image(
+                        systemName: "chevron.left"
+                    )
+                }
+
+                Text(monthTitle)
+                .font(.headline.bold())
+                .foregroundStyle(.cyan)
+                .frame(minWidth: 145)
+
+                Button {
+                    moveMonth(1)
+                } label: {
+                    Image(
+                        systemName: "chevron.right"
+                    )
+                }
+            }
+            .foregroundStyle(.cyan)
+
+            LazyVGrid(
+                columns: Array(
+                    repeating:
+                    GridItem(
+                        .flexible(),
+                        spacing: 6
+                    ),
+                    count: 7
+                ),
+                spacing: 8
+            ) {
+
+                ForEach(
+                    Array(
+                        weekdaySymbols.enumerated()
+                    ),
+                    id: \.offset
+                ) { _, symbol in
+
+                    Text(symbol)
+                    .font(.caption.bold())
+                    .foregroundStyle(
+                        .white.opacity(0.55)
+                    )
+                    .frame(
+                        maxWidth: .infinity
+                    )
+                }
+
+                ForEach(
+                    Array(days.enumerated()),
+                    id: \.offset
+                ) { _, date in
+
+                    if let date {
+
+                        let eventDay =
+                        hasEvent(on: date)
+
+                        let today =
+                        isToday(date)
+
+                        ZStack {
+
+                            if eventDay {
+                                Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            .yellow,
+                                            .orange
+                                        ],
+                                        startPoint:
+                                        .topLeading,
+                                        endPoint:
+                                        .bottomTrailing
+                                    )
+                                )
+                                .shadow(
+                                    color:
+                                    .yellow.opacity(
+                                        0.45
+                                    ),
+                                    radius: 6
+                                )
+
+                            } else if today {
+                                Circle()
+                                .stroke(
+                                    .cyan,
+                                    lineWidth: 2
+                                )
+                            }
+
+                            Text(
+                                "\(calendar.component(.day, from: date))"
+                            )
+                            .font(
+                                .subheadline.bold()
+                            )
+                            .foregroundStyle(
+                                eventDay
+                                ? .black
+                                : .white
+                            )
+                        }
+                        .frame(height: 42)
+
+                    } else {
+                        Color.clear
+                        .frame(height: 42)
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                Circle()
+                .fill(.yellow)
+                .frame(
+                    width: 10,
+                    height: 10
+                )
+
+                Text("Scheduled event")
+                .font(.caption.bold())
+                .foregroundStyle(
+                    .white.opacity(0.72)
+                )
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [
+                    .cyan.opacity(0.13),
+                    .purple.opacity(0.24)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(
+            RoundedRectangle(cornerRadius: 24)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+            .stroke(
+                .cyan.opacity(0.55),
+                lineWidth: 1
+            )
+        )
+    }
+
+    private func moveMonth(
+    _ amount: Int
+    ) {
+        guard let newMonth =
+        calendar.date(
+            byAdding: .month,
+            value: amount,
+            to: displayedMonth
+        )
+        else {
+            return
+        }
+
+        withAnimation(.easeInOut) {
+            displayedMonth = newMonth
+        }
+    }
+}
 
 private struct EventSection: View {
     let title: String
