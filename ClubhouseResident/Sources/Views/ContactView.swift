@@ -85,39 +85,43 @@ struct ContactView: View {
     }
 
     private var serviceOptions: [String] {
-        let vendorCategories = vendorOptions
-        .compactMap {
-            $0.category?.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+        let vendorCategories = vendorOptions.flatMap { vendor in
+            services(for: vendor)
         }
-        .filter { !$0.isEmpty }
 
-        return Array(
-            Set(
-                vendorCategories +
-                fallbackServiceOptions
-            )
+        let normalizedFallbacks = fallbackServiceOptions.map {
+            canonicalService($0)
+        }
+
+        let allServiceKeys = Set(
+            vendorCategories + normalizedFallbacks
         )
+
+        return allServiceKeys
+        .map(displayServiceName)
         .sorted()
     }
 
     private var filteredVendorOptions: [Vendor] {
-        let cleanService = selectedService
-        .trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        .lowercased()
+        let selectedKey = canonicalService(selectedService)
 
-        return vendorOptions.filter { vendor in
-            let cleanCategory =
-            (vendor.category ?? "")
-            .trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+        let matchingVendors = vendorOptions.filter { vendor in
+            services(for: vendor).contains(selectedKey)
+        }
+
+        var seenCompanies = Set<String>()
+
+        return matchingVendors.filter { vendor in
+            let companyKey = vendor.company_name
+            .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
 
-            return cleanCategory == cleanService
+            guard !seenCompanies.contains(companyKey) else {
+                return false
+            }
+
+            seenCompanies.insert(companyKey)
+            return true
         }
     }
 
@@ -448,7 +452,21 @@ struct ContactView: View {
                         ForEach(
                             filteredVendorOptions
                         ) { vendor in
-                            Text(vendor.company_name)
+                            HStack(spacing: 8) {
+                                Text(vendor.company_name)
+
+                                Spacer()
+
+                                if (vendor.signup_count ?? 0) > 0 {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "star.fill")
+
+                                        Text("\(vendor.signup_count ?? 0)")
+                                    }
+                                    .foregroundStyle(.yellow)
+                                    .font(.caption.bold())
+                                }
+                            }
                             .tag(vendor.id)
                         }
                     }
@@ -677,6 +695,58 @@ struct ContactView: View {
             error.localizedDescription
         }
     }
+    private func canonicalService(_ raw: String) -> String {
+        let value = raw
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+        .replacingOccurrences(of: "-", with: "_")
+        .replacingOccurrences(of: " ", with: "_")
+
+        switch value {
+        case "roofing", "roofer", "roofing_contractor":
+            return "roofer"
+
+        case "general_contractor", "generalcontractor":
+            return "general_contractor"
+
+        default:
+            return value
+        }
+    }
+
+    private func displayServiceName(_ key: String) -> String {
+        switch canonicalService(key) {
+        case "roofer":
+            return "Roofing"
+
+        case "general_contractor":
+            return "General Contractor"
+
+        case "pool_service":
+            return "Pool Service"
+
+        default:
+            return key
+            .replacingOccurrences(of: "_", with: " ")
+            .split(separator: " ")
+            .map { $0.capitalized }
+            .joined(separator: " ")
+        }
+    }
+
+    private func services(for vendor: Vendor) -> [String] {
+        if let categories = vendor.categories,
+        !categories.isEmpty {
+            return categories.map(canonicalService)
+        }
+
+        if let category = vendor.category,
+        !category.isEmpty {
+            return [canonicalService(category)]
+        }
+
+        return []
+    }
 
     private func loadVendorOptions() {
         guard residentId > 0 else {
@@ -735,13 +805,12 @@ struct ContactView: View {
                     vendorOptions =
                     decoded.vendors ?? []
 
-                    if let firstVendor =
-                    vendorOptions.first {
-                        selectedVendorId =
-                        firstVendor.id
-                        selectedService =
-                        firstVendor.category ??
-                        selectedService
+                    if let firstVendor = vendorOptions.first {
+                        selectedVendorId = firstVendor.id
+
+                        if let firstService = services(for: firstVendor).first {
+                            selectedService = displayServiceName(firstService)
+                        }
                     }
                 } catch {
                     vendorOptionsError =
@@ -774,14 +843,19 @@ struct ContactView: View {
     }
 
     private func syncServiceToSelectedVendor() {
-        guard let vendor =
-        selectedVendor() else {
+        guard let vendor = selectedVendor() else {
             return
         }
 
-        if let category = vendor.category,
-        !category.isEmpty {
-            selectedService = category
+        let selectedKey = canonicalService(selectedService)
+        let vendorServices = services(for: vendor)
+
+        if vendorServices.contains(selectedKey) {
+            return
+        }
+
+        if let firstService = vendorServices.first {
+            selectedService = displayServiceName(firstService)
         }
     }
 
@@ -822,7 +896,7 @@ struct ContactView: View {
         let payload =
         ResidentServiceRequestPayload(
             vendor_id: selectedVendorId,
-            service: selectedService,
+            service: canonicalService(selectedService),
             sub_service: nil,
             message: cleanMessage
         )
