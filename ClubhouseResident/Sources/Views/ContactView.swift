@@ -449,22 +449,15 @@ struct ContactView: View {
                         "Vendor",
                         selection: $selectedVendorId
                     ) {
-                        ForEach(
-                            filteredVendorOptions
-                        ) { vendor in
-                            HStack(spacing: 8) {
+                        ForEach(filteredVendorOptions) { vendor in
+                            HStack(spacing: 6) {
                                 Text(vendor.company_name)
 
-                                Spacer()
-
                                 if (vendor.signup_count ?? 0) > 0 {
-                                    HStack(spacing: 3) {
-                                        Image(systemName: "star.fill")
+                                    Image(systemName: "star.fill")
 
-                                        Text("\(vendor.signup_count ?? 0)")
-                                    }
-                                    .foregroundStyle(.yellow)
-                                    .font(.caption.bold())
+                                    Text("\(vendor.signup_count ?? 0)")
+                                    .fontWeight(.bold)
                                 }
                             }
                             .tag(vendor.id)

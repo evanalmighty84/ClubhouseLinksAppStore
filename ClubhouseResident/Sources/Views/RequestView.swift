@@ -621,19 +621,14 @@ struct RequestView: View {
                     selection: $selectedVendorId
                 ) {
                     ForEach(filteredVendorOptions) { vendor in
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             Text(vendor.company_name)
 
-                            Spacer()
-
                             if (vendor.signup_count ?? 0) > 0 {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "star.fill")
+                                Image(systemName: "star.fill")
 
-                                    Text("\(vendor.signup_count ?? 0)")
-                                }
-                                .foregroundStyle(.yellow)
-                                .font(.caption.bold())
+                                Text("\(vendor.signup_count ?? 0)")
+                                .fontWeight(.bold)
                             }
                         }
                         .tag(vendor.id)
@@ -653,6 +648,65 @@ struct RequestView: View {
                 .clipShape(
                     RoundedRectangle(cornerRadius: 18)
                 )
+
+                // MARK: - Vendor Activity Card
+                if selectedVendorId != vendorNotListedId,
+                let vendor = selectedVendor(),
+                (vendor.signup_count ?? 0) > 0 {
+
+                    HStack(spacing: 12) {
+                        Image(systemName: "star.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(.yellow)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(
+                                "\(vendor.signup_count ?? 0) homeowners"
+                            )
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+
+                            Text(
+                                "\(vendor.signup_count ?? 0) homeowners have used or submitted work with \(vendor.company_name)."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.72))
+                            .fixedSize(
+                                horizontal: false,
+                                vertical: true
+                            )
+                        }
+
+                        Spacer()
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                .yellow.opacity(0.12),
+                                .orange.opacity(0.10)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: 18)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                        .stroke(
+                            .yellow.opacity(0.50),
+                            lineWidth: 1
+                        )
+                    )
+                    .transition(
+                        .opacity.combined(
+                            with: .move(edge: .top)
+                        )
+                    )
+                }
 
                 if selectedVendorId == vendorNotListedId {
                     VStack(alignment: .leading, spacing: 14) {
