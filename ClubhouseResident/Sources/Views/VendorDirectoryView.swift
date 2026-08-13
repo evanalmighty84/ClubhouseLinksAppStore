@@ -20,6 +20,7 @@ struct Vendor: Codable, Identifiable {
     let logo_url: String?
     let active: Bool?
     let signup_count: Int?
+    let nearby_completed_projects: [VendorNearbyCompletedProject]?
     let signed_up_people: [VendorSignupPerson]?
 }
 

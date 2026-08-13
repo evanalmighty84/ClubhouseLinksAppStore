@@ -36,6 +36,19 @@ struct VendorAccount: Decodable {
     let logo_url: String?
     let active: Bool?
 }
+struct VendorNearbyCompletedProject: Codable, Identifiable {
+    let project_id: Int
+    let resident_id: Int
+    let first_name: String?
+    let address: String?
+    let distance_miles: Double?
+    let finished_photo_url: String?
+    let photo_approval_status: String?
+
+    var id: Int {
+        project_id
+    }
+}
 
 struct VendorServiceRequest: Codable, Identifiable {
     let id: String

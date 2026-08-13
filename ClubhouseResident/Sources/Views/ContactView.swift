@@ -480,6 +480,8 @@ struct ContactView: View {
                 }
             }
 
+            vendorActivitySection
+
             VStack(
                 alignment: .leading,
                 spacing: 10
@@ -602,7 +604,263 @@ struct ContactView: View {
             )
         )
     }
+    @ViewBuilder
+    private var vendorActivitySection: some View {
+        if let vendor = selectedVendor(),
+        (vendor.signup_count ?? 0) > 0 {
 
+            VStack(alignment: .leading, spacing: 16) {
+
+                // Gold star + homeowner activity count
+                HStack(spacing: 14) {
+                    Image(systemName: "star.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(.yellow)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        let count = vendor.signup_count ?? 0
+
+                        Text(
+                            "\(count) " +
+                            (count == 1 ? "homeowner" : "homeowners")
+                        )
+                        .font(.headline.bold())
+                        .foregroundStyle(.white)
+
+                        Text(
+                            "\(count) " +
+                            (count == 1
+                            ? "homeowner has"
+                            : "homeowners have") +
+                            " used or submitted work with " +
+                            "\(vendor.company_name)."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.72))
+                        .fixedSize(
+                            horizontal: false,
+                            vertical: true
+                        )
+                    }
+
+                    Spacer()
+                }
+
+                // Completed project carousel for THIS vendor
+                if let projects = vendor.nearby_completed_projects,
+                !projects.isEmpty {
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Completed Projects Near You")
+                        .font(.headline.bold())
+                        .foregroundStyle(.cyan)
+
+                        TabView {
+                            ForEach(
+                                Array(projects.prefix(5))
+                            ) { project in
+                                nearbyVendorProjectSlide(
+                                    project,
+                                    vendor: vendor
+                                )
+                                .padding(.horizontal, 4)
+                            }
+                        }
+                        .frame(height: 200)
+                        .tabViewStyle(
+                            .page(
+                                indexDisplayMode: .automatic
+                            )
+                        )
+                    }
+                }
+            }
+            .padding(16)
+            .frame(
+                maxWidth: .infinity,
+                alignment: .leading
+            )
+            .background(
+                LinearGradient(
+                    colors: [
+                        .yellow.opacity(0.10),
+                        .orange.opacity(0.08)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(
+                RoundedRectangle(cornerRadius: 20)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                .stroke(
+                    .yellow.opacity(0.55),
+                    lineWidth: 1
+                )
+            )
+        }
+    }
+
+    private func nearbyVendorProjectSlide(
+    _ project: VendorNearbyCompletedProject,
+    vendor: Vendor
+    ) -> some View {
+
+        VStack(alignment: .leading, spacing: 10) {
+
+            HStack(spacing: 12) {
+
+                // Finished project photo
+                if let imageUrl = project.finished_photo_url,
+                !imageUrl.isEmpty,
+                let url = URL(string: imageUrl) {
+
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+
+                        case .empty:
+                            ZStack {
+                                RoundedRectangle(
+                                    cornerRadius: 14
+                                )
+                                .fill(.black.opacity(0.25))
+
+                                ProgressView()
+                                .tint(.cyan)
+                            }
+
+                        case .success(let image):
+                            image
+                            .resizable()
+                            .scaledToFill()
+
+                        case .failure:
+                            ZStack {
+                                RoundedRectangle(
+                                    cornerRadius: 14
+                                )
+                                .fill(.black.opacity(0.25))
+
+                                Image(
+                                    systemName:
+                                    "house.and.flag.fill"
+                                )
+                                .font(.title)
+                                .foregroundStyle(.cyan)
+                            }
+
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                    .frame(
+                        width: 110,
+                        height: 90
+                    )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: 14)
+                    )
+
+                } else {
+
+                    ZStack {
+                        RoundedRectangle(
+                            cornerRadius: 14
+                        )
+                        .fill(.black.opacity(0.25))
+
+                        Image(
+                            systemName:
+                            "house.and.flag.fill"
+                        )
+                        .font(.title)
+                        .foregroundStyle(.cyan)
+                    }
+                    .frame(
+                        width: 110,
+                        height: 90
+                    )
+                }
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 6
+                ) {
+
+                    Text(vendor.company_name)
+                    .font(.headline.bold())
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+
+                    Text(selectedService)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.cyan)
+
+                    if let firstName = project.first_name,
+                    !firstName.isEmpty {
+
+                        Text(
+                            "\(firstName) used this contractor"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(
+                            .white.opacity(0.75)
+                        )
+                        .lineLimit(1)
+                    }
+
+                    if let distance =
+                    project.distance_miles {
+
+                        Text(
+                            String(
+                                format:
+                                "%.1f miles away",
+                                distance
+                            )
+                        )
+                        .font(.caption)
+                        .foregroundStyle(
+                            .white.opacity(0.65)
+                        )
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            if let address = project.address,
+            !address.isEmpty {
+
+                Text(address)
+                .font(.caption)
+                .foregroundStyle(
+                    .white.opacity(0.55)
+                )
+                .lineLimit(1)
+            }
+        }
+        .padding()
+        .frame(
+            maxWidth: .infinity,
+            alignment: .leading
+        )
+        .background(
+            .black.opacity(0.18)
+        )
+        .clipShape(
+            RoundedRectangle(cornerRadius: 20)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+            .stroke(
+                .purple.opacity(0.45),
+                lineWidth: 1
+            )
+        )
+    }
     @MainActor
     private func loadResidentRequests() async {
         guard residentId > 0 else {
