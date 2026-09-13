@@ -210,26 +210,107 @@ enum VendorPushRegistration {
             forKey: "residentId"
         )
 
+        let supportResidentMode = defaults.bool(
+            forKey: "supportResidentMode"
+        )
+
+        /*
+         * Vendor account:
+         *
+         * Always keep Aspen's normal vendor
+         * notification registration alive.
+         */
         if accountType == "vendor",
         vendorId > 0 {
+
             registerVendorDevice(
                 vendorId: vendorId,
                 token: token
             )
+
+            /*
+             * If this vendor device is currently
+             * viewing a resident in support mode,
+             * also refresh the temporary resident
+             * notification subscription.
+             *
+             * residentId is intentionally the
+             * temporary support resident while
+             * supportResidentMode == true.
+             */
+            if supportResidentMode,
+            residentId > 0 {
+
+                registerSupportResidentDevice(
+                    vendorId: vendorId,
+                    residentId: residentId,
+                    token: token
+                )
+            }
+
             return
         }
 
+        /*
+         * Normal resident account.
+         *
+         * This path is NOT used by Aspen while
+         * support mode is active because Aspen
+         * remains accountType == "vendor".
+         */
         if residentId > 0 {
+
             registerResidentDevice(
                 residentId: residentId,
                 token: token
             )
+
             return
         }
 
         print(
             "[APNs] The token is stored, but no signed-in account was found."
         )
+    }
+
+    private static func registerSupportResidentDevice(
+    vendorId: Int,
+    residentId: Int,
+    token: String
+    ) {
+        Task {
+            do {
+
+                /*
+                 * SupportResidentAPI reads the same
+                 * stored APNs token from UserDefaults.
+                 *
+                 * didReceiveDeviceToken() stores the
+                 * token before reaching this method,
+                 * so the stored value should match
+                 * the token passed in here.
+                 */
+                let resident =
+                try await SupportResidentAPI.shared
+                .switchResident(
+                    vendorId: vendorId,
+                    residentId: residentId
+                )
+
+                print(
+                    "[APNs] Support resident device registered:",
+                    resident.id,
+                    String(token.prefix(12)) + "..."
+                )
+
+            } catch {
+
+                print(
+                    "[APNs] Support resident registration failed:",
+                    error.localizedDescription
+                )
+            }
+        }
     }
 
     private static func registerVendorDevice(

@@ -1,21 +1,52 @@
 import SwiftUI
 
-struct HomeView: View {
-    @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
-    @AppStorage("residentId") private var residentId = 0
-    @AppStorage("accountType") private var accountType = ""
-    @AppStorage("vendorId") private var vendorId = 0
+import SwiftUI
 
+struct HomeView: View {
+
+    @AppStorage("residentIsSignedUp")
+    private var residentIsSignedUp = false
+
+    @AppStorage("residentId")
+    private var residentId = 0
+
+    @AppStorage("accountType")
+    private var accountType = ""
+
+    @AppStorage("vendorId")
+    private var vendorId = 0
+
+    @AppStorage("supportResidentMode")
+    private var supportResidentMode = false
 
     var body: some View {
-        if accountType == "vendor" && vendorId > 0 {
-            VendorHomeView()
-        } else if residentId > 0 || residentIsSignedUp {
+
+        /*
+         * Support mode MUST be checked first.
+         *
+         * Aspen remains logged in as a vendor,
+         * but residentId temporarily points to
+         * the resident being supported.
+         */
+        if supportResidentMode &&
+        residentId > 0 {
+
             ResidentProfileView()
+
+        } else if accountType == "vendor" &&
+        vendorId > 0 {
+
+            VendorHomeView()
+
+        } else if residentId > 0 ||
+        residentIsSignedUp {
+
+            ResidentProfileView()
+
         } else {
+
             homeContent
         }
-
     }
 
     private var homeContent: some View {
@@ -23,8 +54,6 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 24) {
 
-                    // Lightbulb logo appears first and then
-                    // transitions into the clubhouse tennis-court image.
                     HomeIntroImageView()
                     .frame(height: 250)
 
@@ -39,8 +68,12 @@ struct HomeView: View {
 
                         Text("Your Local Home Service Referral Network")
                         .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
-                        .multilineTextAlignment(.center)
+                        .foregroundStyle(
+                            .white.opacity(0.7)
+                        )
+                        .multilineTextAlignment(
+                            .center
+                        )
                     }
 
                     NavigationLink {
@@ -48,7 +81,9 @@ struct HomeView: View {
                     } label: {
                         Text("Create Account")
                         .font(.headline)
-                        .frame(maxWidth: .infinity)
+                        .frame(
+                            maxWidth: .infinity
+                        )
                         .padding()
                         .background(
                             LinearGradient(
@@ -74,7 +109,7 @@ struct HomeView: View {
                     }
 
                     NeonCard(
-                        title: "See Completed Projects By Neigborhos",
+                        title: "See Completed Projects By Neighbors",
                         text: "Choose your next home project or repair specialist by seeing who your neighbors have used"
                     )
 
@@ -102,35 +137,40 @@ struct HomeView: View {
 }
 
 
+
 // MARK: - Logo to Clubhouse Transition
 
- struct HomeIntroImageView: View {
+struct HomeIntroImageView: View {
+
     @State private var showClubhouse = false
     @State private var hasStarted = false
 
     var body: some View {
         ZStack {
-            if showClubhouse {
-                clubhouseImage
-                .transition(
-                    .opacity.combined(
-                        with: .scale(scale: 0.94)
-                    )
-                )
-            } else {
-                logoImage
-                .transition(
-                    .opacity.combined(
-                        with: .scale(scale: 0.86)
-                    )
-                )
-            }
+
+            logoImage
+            .opacity(
+                showClubhouse ? 0 : 1
+            )
+            .scaleEffect(
+                showClubhouse ? 0.96 : 1
+            )
+
+            clubhouseImage
+            .opacity(
+                showClubhouse ? 1 : 0
+            )
+            .scaleEffect(
+                showClubhouse ? 1 : 0.96
+            )
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity
+        )
         .task {
             await startIntroOnce()
         }
-        .accessibilityHidden(true)
     }
 
     private var logoImage: some View {
@@ -138,7 +178,10 @@ struct HomeView: View {
         .resizable()
         .interpolation(.high)
         .scaledToFit()
-        .frame(width: 190, height: 190)
+        .frame(
+            width: 190,
+            height: 190
+        )
         .clipShape(
             RoundedRectangle(
                 cornerRadius: 38,
@@ -172,15 +215,15 @@ struct HomeView: View {
                 style: .continuous
             )
             .stroke(
-        LinearGradient(
-        colors: [
-        .cyan.opacity(0.7),
-        .orange.opacity(0.75),
-        .purple.opacity(0.7)
-    ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    ),
+                LinearGradient(
+                    colors: [
+                        .cyan.opacity(0.7),
+                        .orange.opacity(0.75),
+                        .purple.opacity(0.7)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
                 lineWidth: 1.5
             )
         }
@@ -198,7 +241,6 @@ struct HomeView: View {
 
         hasStarted = true
 
-        // Keep the lightbulb logo visible first.
         do {
             try await Task.sleep(
                 nanoseconds: 1_500_000_000
@@ -211,7 +253,6 @@ struct HomeView: View {
             return
         }
 
-        // Transition from the logo into the clubhouse image.
         withAnimation(
             .easeInOut(duration: 0.8)
         ) {

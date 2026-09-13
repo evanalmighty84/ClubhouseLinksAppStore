@@ -1298,17 +1298,22 @@ struct SignupView: View {
     }
 
     private func continueAsResidentAfterVerification() {
-        accountType = "resident"
-        vendorId = 0
-        vendorCompanyName = ""
-        vendorCategory = ""
-        vendorPhone = ""
+        /*
+         * Do not change global AppStorage/session values yet.
+         *
+         * Signup is still in progress. Changing accountType here can
+         * cause the parent/root view to rebuild SignupView and send the
+         * user back to the beginning of the signup flow.
+         *
+         * accountType will be set to "resident" only after the account
+         * has actually been created successfully.
+         */
+        errorMessage = ""
 
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + 0.35
-        ) {
-            goTo(.address, focus: .address)
-        }
+        goTo(
+            .address,
+            focus: .address
+        )
     }
 
     // MARK: - Address Selection

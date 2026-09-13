@@ -27,6 +27,12 @@ struct VendorHomeView: View {
     @State private var newRequestCount = 0
     @State private var isLoadingRequests = false
 
+    @State private var showingResidentSwitcher = false
+
+    @State private var supportDeviceAuthorized = false
+
+    @State private var checkingSupportDevice = false
+
     // MARK: - Computed Display Values
 
     private var companyName: String {
@@ -84,6 +90,58 @@ struct VendorHomeView: View {
         ? nil
         : storedLogo
     }
+    private var supportModeButton: some View {
+        Button {
+            showingResidentSwitcher = true
+        } label: {
+            HStack(spacing: 12) {
+
+                Image(
+                    systemName:
+                    "person.2.badge.gearshape.fill"
+                )
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 3
+                ) {
+                    Text("Switch Resident")
+                    .font(.headline.bold())
+
+                    Text(
+                        "Troubleshoot a resident account"
+                    )
+                    .font(.caption)
+                    .opacity(0.78)
+                }
+
+                Spacer()
+
+                Image(
+                    systemName: "chevron.right"
+                )
+            }
+            .foregroundStyle(.white)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [
+                        .orange,
+                        .purple
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 20
+                )
+            )
+        }
+        .buttonStyle(.plain)
+    }
 
     // MARK: - Body
 
@@ -93,6 +151,9 @@ struct VendorHomeView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         header
+                        if supportDeviceAuthorized {
+                            supportModeButton
+                        }
 
                         vendorLogoCard
 
@@ -124,6 +185,12 @@ struct VendorHomeView: View {
         }
         .task(id: vendorId) {
             await refreshVendorHome()
+            await checkSupportDevice()
+        }
+        .sheet(
+            isPresented: $showingResidentSwitcher
+        ) {
+            SupportResidentPickerView()
         }
     }
 
@@ -740,6 +807,27 @@ struct VendorHomeView: View {
                 error.localizedDescription
             )
         }
+    }
+
+    @MainActor
+    private func checkSupportDevice() async {
+
+        guard vendorId > 0 else {
+            supportDeviceAuthorized = false
+            return
+        }
+
+        checkingSupportDevice = true
+
+        defer {
+            checkingSupportDevice = false
+        }
+
+        supportDeviceAuthorized =
+        await SupportResidentAPI.shared
+        .isAuthorizedSupportDevice(
+            vendorId: vendorId
+        )
     }
 
     // MARK: - Local Vendor Storage

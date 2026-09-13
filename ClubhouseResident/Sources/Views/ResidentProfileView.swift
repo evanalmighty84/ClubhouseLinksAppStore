@@ -60,6 +60,20 @@ struct ResidentProfileView: View {
     @AppStorage("residentAddress") private var address = ""
     @AppStorage("residentNeighborhoodName") private var neighborhoodName = ""
     @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
+    @AppStorage("supportResidentMode")
+    private var supportResidentMode = false
+
+    @AppStorage("vendorId")
+    private var supportVendorId = 0
+
+    @AppStorage("vendorCompanyName")
+    private var supportVendorCompanyName = ""
+
+    @State private var showingSupportResidentSwitcher = false
+
+    @State private var isLeavingSupportMode = false
+
+    @State private var supportModeError = ""
 
     @State private var isProfileFlipped = false
 
@@ -82,6 +96,82 @@ struct ResidentProfileView: View {
     @State private var isSelectingAddress = false
     @State private var addressSaveMessage = ""
     @State private var addressSaveError = ""
+
+    @MainActor
+    private func returnToVendor() async {
+
+        guard supportResidentMode,
+        supportVendorId > 0 else {
+            return
+        }
+
+        isLeavingSupportMode = true
+        supportModeError = ""
+
+        defer {
+            isLeavingSupportMode = false
+        }
+
+        do {
+
+            /*
+             * First remove Aspen's temporary
+             * resident notification subscription.
+             */
+            try await SupportResidentAPI.shared
+            .clearResident(
+                vendorId: supportVendorId
+            )
+
+            /*
+             * Remove only the temporary resident
+             * state from this Aspen device.
+             *
+             * Do NOT touch:
+             *
+             * accountType
+             * vendorId
+             * vendorCompanyName
+             * vendorCategory
+             * vendorLogoURL
+             *
+             * Aspen remains logged in.
+             */
+            residentId = 0
+            firstName = ""
+            lastName = ""
+            phone = ""
+            address = ""
+            neighborhoodName = ""
+            displayAreaName = ""
+
+            UserDefaults.standard.removeObject(
+                forKey: "residentNeighborhoodId"
+            )
+
+            supportResidentMode = false
+
+            /*
+             * Re-sync Aspen's vendor push
+             * registration just to make sure
+             * the normal vendor registration
+             * remains current.
+             */
+            VendorPushRegistration
+            .syncStoredToken()
+
+        } catch {
+
+            /*
+             * IMPORTANT:
+             * Do not leave resident mode locally
+             * if the server failed to remove the
+             * temporary notification subscription.
+             */
+            supportModeError =
+            error.localizedDescription
+        }
+    }
 
 
 
@@ -165,6 +255,163 @@ struct ResidentProfileView: View {
         .map { $0 }
     }
 
+    private var supportModeBanner: some View {
+
+        VStack(spacing: 12) {
+
+            HStack(spacing: 8) {
+
+                Image(
+                    systemName:
+                    "wrench.and.screwdriver.fill"
+                )
+
+                Text("SUPPORT MODE")
+                .font(.caption.bold())
+                .tracking(1.2)
+
+                Spacer()
+
+                Circle()
+                .fill(.green)
+                .frame(
+                    width: 8,
+                    height: 8
+                )
+            }
+            .foregroundStyle(.orange)
+
+            VStack(spacing: 4) {
+
+                Text(
+                    "Viewing \(firstName) \(lastName)"
+                )
+                .font(.headline.bold())
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+
+                if supportVendorCompanyName
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+                .isEmpty == false {
+
+                    Text(
+                        "Supporting as \(supportVendorCompanyName)"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(
+                        .white.opacity(0.65)
+                    )
+                }
+            }
+
+            HStack(spacing: 10) {
+
+                Button {
+                    showingSupportResidentSwitcher = true
+                } label: {
+
+                    Label(
+                        "Switch Resident",
+                        systemImage:
+                        "person.2.fill"
+                    )
+                    .font(.caption.bold())
+                    .frame(
+                        maxWidth: .infinity
+                    )
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(
+                    .purple.opacity(0.85)
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 14
+                    )
+                )
+
+                Button {
+                    Task {
+                        await returnToVendor()
+                    }
+                } label: {
+
+                    if isLeavingSupportMode {
+
+                        ProgressView()
+                        .tint(.white)
+                        .frame(
+                            maxWidth: .infinity
+                        )
+                        .padding(.vertical, 12)
+
+                    } else {
+
+                        Label(
+                            "Return to Aspen",
+                            systemImage:
+                            "arrow.uturn.backward.circle.fill"
+                        )
+                        .font(.caption.bold())
+                        .frame(
+                            maxWidth: .infinity
+                        )
+                        .padding(.vertical, 12)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(
+                    .orange.opacity(0.9)
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 14
+                    )
+                )
+                .disabled(
+                    isLeavingSupportMode
+                )
+            }
+
+            if !supportModeError.isEmpty {
+
+                Text(supportModeError)
+                .font(.caption)
+                .foregroundStyle(.red)
+                .multilineTextAlignment(
+                    .center
+                )
+            }
+        }
+        .padding()
+        .background(
+            .black.opacity(0.48)
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 20
+            )
+        )
+        .overlay(
+            RoundedRectangle(
+                cornerRadius: 20
+            )
+            .stroke(
+                .orange.opacity(0.75),
+                lineWidth: 1.5
+            )
+        )
+        .shadow(
+            color: .orange.opacity(0.2),
+            radius: 10
+        )
+    }
+
     private var accountSettingsBadge: some View {
         VStack(spacing: 6) {
             ZStack {
@@ -215,6 +462,10 @@ struct ResidentProfileView: View {
         NeonBackground {
             ScrollView {
                 VStack(spacing: 14) {
+
+                    if supportResidentMode {
+                        supportModeBanner
+                    }
                     profileTopHeader
 
                     Text("Clubhouse Links is your portal to everyday home service contractors who have been used and trusted by your neighbors.")
@@ -327,6 +578,12 @@ struct ResidentProfileView: View {
                     Spacer(minLength: 90)
                 }
                 .padding()
+            }
+            .sheet(
+                isPresented:
+                $showingSupportResidentSwitcher
+            ) {
+                SupportResidentPickerView()
             }
         }
         .onAppear {
