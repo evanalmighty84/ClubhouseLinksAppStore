@@ -109,6 +109,11 @@ struct SignupView: View {
     @AppStorage("vendorCompanyName") private var vendorCompanyName = ""
     @AppStorage("vendorCategory") private var vendorCategory = ""
     @AppStorage("vendorPhone") private var vendorPhone = ""
+    @AppStorage("supportSignupMode")
+    private var supportSignupMode = false
+
+    @AppStorage("supportResidentMode")
+    private var supportResidentMode = false
 
     @StateObject private var addressAutocomplete = AddressAutocomplete()
 
@@ -1553,14 +1558,63 @@ struct SignupView: View {
                 residentNeighborhoodName =
                 resident.neighborhood_name ?? ""
 
-                accountType = "resident"
-                vendorId = 0
-                vendorCompanyName = ""
-                vendorCategory = ""
-                vendorPhone = ""
+                /*
+     * If Aspen is testing the resident signup flow,
+     * preserve the vendor account underneath.
+     */
+                if supportSignupMode {
 
-                residentIsSignedUp = true
-                dismiss()
+                    /*
+                     * Aspen stays logged in as the vendor.
+                     *
+                     * DO NOT clear:
+                     * vendorId
+                     * vendorCompanyName
+                     * vendorCategory
+                     * vendorPhone
+                     */
+                    accountType = "vendor"
+
+                    residentIsSignedUp = true
+
+                    /*
+                     * The newly-created resident becomes the
+                     * temporary support resident.
+                     */
+                    supportResidentMode = true
+                    supportSignupMode = false
+
+                    /*
+                     * This refreshes Aspen's normal vendor
+                     * registration AND registers the Aspen
+                     * phone for the newly-created resident's
+                     * support notifications.
+                     */
+                    VendorPushRegistration
+                    .syncStoredToken()
+
+                    print(
+                        "[Support Signup] Created resident:",
+                        newResidentId,
+                        "- returning to resident support mode"
+                    )
+
+                } else {
+
+                    /*
+                     * Normal resident signup.
+                     */
+                    accountType = "resident"
+
+                    vendorId = 0
+                    vendorCompanyName = ""
+                    vendorCategory = ""
+                    vendorPhone = ""
+
+                    residentIsSignedUp = true
+
+                    dismiss()
+                }
             }
         }
         .resume()

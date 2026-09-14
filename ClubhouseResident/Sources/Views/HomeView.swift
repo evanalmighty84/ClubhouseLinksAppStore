@@ -1,7 +1,5 @@
 import SwiftUI
 
-import SwiftUI
-
 struct HomeView: View {
 
     @AppStorage("residentIsSignedUp")
@@ -19,28 +17,45 @@ struct HomeView: View {
     @AppStorage("supportResidentMode")
     private var supportResidentMode = false
 
+    @AppStorage("supportSignupMode")
+    private var supportSignupMode = false
+
     var body: some View {
 
         /*
-         * Support mode MUST be checked first.
+         * Support signup has highest priority.
          *
-         * Aspen remains logged in as a vendor,
-         * but residentId temporarily points to
-         * the resident being supported.
+         * Aspen remains the underlying vendor account,
+         * but we temporarily display the real SignupView
+         * so we can test the complete resident signup /
+         * Twilio verification flow.
          */
-        if supportResidentMode &&
+        if supportSignupMode {
+
+            SupportSignupContainerView()
+
+        } else if supportResidentMode &&
         residentId > 0 {
 
+            /*
+             * Existing resident support mode.
+             */
             ResidentProfileView()
 
         } else if accountType == "vendor" &&
         vendorId > 0 {
 
+            /*
+             * Normal Aspen/vendor mode.
+             */
             VendorHomeView()
 
         } else if residentId > 0 ||
         residentIsSignedUp {
 
+            /*
+             * Normal resident mode.
+             */
             ResidentProfileView()
 
         } else {
@@ -58,6 +73,7 @@ struct HomeView: View {
                     .frame(height: 250)
 
                     VStack(spacing: 6) {
+
                         Text("Clubhouse Links")
                         .font(.largeTitle.bold())
                         .foregroundStyle(.white)
@@ -66,7 +82,9 @@ struct HomeView: View {
                         .font(.title2.bold())
                         .foregroundStyle(.cyan)
 
-                        Text("Your Local Home Service Referral Network")
+                        Text(
+                            "Your Local Home Service Referral Network"
+                        )
                         .font(.subheadline)
                         .foregroundStyle(
                             .white.opacity(0.7)
@@ -79,6 +97,7 @@ struct HomeView: View {
                     NavigationLink {
                         SignupView()
                     } label: {
+
                         Text("Create Account")
                         .font(.headline)
                         .frame(
@@ -103,29 +122,38 @@ struct HomeView: View {
                             )
                         )
                         .shadow(
-                            color: .cyan.opacity(0.5),
+                            color:
+                            .cyan.opacity(0.5),
                             radius: 12
                         )
                     }
 
                     NeonCard(
-                        title: "See Completed Projects By Neighbors",
-                        text: "Choose your next home project or repair specialist by seeing who your neighbors have used"
+                        title:
+                        "See Completed Projects By Neighbors",
+                        text:
+                        "Choose your next home project or repair specialist by seeing who your neighbors have used"
                     )
 
                     NeonCard(
-                        title: "Submit Vendor Requests",
-                        text: "Send maintenance requests, report issues, or contact reputable local vendors."
+                        title:
+                        "Submit Vendor Requests",
+                        text:
+                        "Send maintenance requests, report issues, or contact reputable local vendors."
                     )
 
                     NeonCard(
-                        title: "View Vendors",
-                        text: "Browse trusted local contractors, home service providers, and HOA or neighborhood-reviewed businesses."
+                        title:
+                        "View Vendors",
+                        text:
+                        "Browse trusted local contractors, home service providers, and HOA or neighborhood-reviewed businesses."
                     )
 
                     NeonCard(
-                        title: "Upcoming Events",
-                        text: "See social events, meetings, holiday celebrations, and other activities."
+                        title:
+                        "Upcoming Events",
+                        text:
+                        "See social events, meetings, holiday celebrations, and other activities."
                     )
 
                     Spacer(minLength: 90)
@@ -137,6 +165,290 @@ struct HomeView: View {
 }
 
 
+// MARK: - Support Signup Container
+
+/*
+ * This wraps the REAL SignupView.
+ *
+ * It lets Aspen test:
+ *
+ * - resident registration
+ * - phone number entry
+ * - Twilio verification
+ * - six-digit SMS AutoFill
+ * - account creation
+ *
+ * while keeping the Aspen vendor account underneath.
+ */
+struct SupportSignupContainerView: View {
+
+    // MARK: Vendor State
+
+    @AppStorage("accountType")
+    private var accountType = ""
+
+    @AppStorage("vendorId")
+    private var vendorId = 0
+
+    @AppStorage("vendorCompanyName")
+    private var vendorCompanyName = ""
+
+    @AppStorage("vendorCategory")
+    private var vendorCategory = ""
+
+    @AppStorage("vendorLogoURL")
+    private var vendorLogoURL = ""
+
+    // MARK: Resident State
+
+    @AppStorage("residentId")
+    private var residentId = 0
+
+    @AppStorage("residentIsSignedUp")
+    private var residentIsSignedUp = false
+
+    @AppStorage("residentFirstName")
+    private var residentFirstName = ""
+
+    @AppStorage("residentLastName")
+    private var residentLastName = ""
+
+    @AppStorage("residentPhone")
+    private var residentPhone = ""
+
+    @AppStorage("residentAddress")
+    private var residentAddress = ""
+
+    @AppStorage("residentNeighborhoodName")
+    private var residentNeighborhoodName = ""
+
+    @AppStorage("residentDisplayAreaName")
+    private var residentDisplayAreaName = ""
+
+    // MARK: Support State
+
+    @AppStorage("supportSignupMode")
+    private var supportSignupMode = false
+
+    @AppStorage("supportResidentMode")
+    private var supportResidentMode = false
+
+    // MARK: Preserve Aspen Vendor Session
+
+    @State private var originalVendorId = 0
+    @State private var originalCompanyName = ""
+    @State private var originalVendorCategory = ""
+    @State private var originalVendorLogoURL = ""
+
+    @State private var capturedVendorState = false
+    @State private var finishingSignup = false
+
+    var body: some View {
+
+        SignupView()
+
+        /*
+         * Persistent support-mode banner.
+         *
+         * safeAreaInset prevents it from simply
+         * covering the SignupView fields.
+         */
+        .safeAreaInset(
+            edge: .top
+        ) {
+            supportSignupBanner
+        }
+
+        .onAppear {
+            captureVendorStateIfNeeded()
+        }
+
+        /*
+         * SignupView may change residentId as
+         * soon as the new account is created.
+         */
+
+
+        /*
+         * Some signup implementations set this
+         * after SMS verification succeeds.
+         */
+
+    }
+
+
+    // MARK: - Support Banner
+
+    private var supportSignupBanner: some View {
+
+        VStack(spacing: 10) {
+
+            HStack(spacing: 10) {
+
+                Image(
+                    systemName:
+                    "person.badge.plus"
+                )
+                .font(.headline)
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 2
+                ) {
+
+                    Text("SUPPORT TEST MODE")
+                    .font(.caption.bold())
+                    .tracking(1.1)
+
+                    Text("Testing New Resident Signup")
+                    .font(.caption)
+                }
+
+                Spacer()
+
+                Circle()
+                .fill(.green)
+                .frame(
+                    width: 8,
+                    height: 8
+                )
+            }
+
+            Button {
+                returnToAspen()
+            } label: {
+
+                HStack {
+
+                    Image(
+                        systemName:
+                        "arrow.uturn.backward.circle.fill"
+                    )
+
+                    Text("Cancel & Return to Aspen")
+                    .font(.caption.bold())
+
+                    Spacer()
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    .orange.opacity(0.88)
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 12
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            .black.opacity(0.92)
+        )
+        .overlay(
+            Rectangle()
+            .frame(height: 1)
+            .foregroundStyle(
+                .orange.opacity(0.75)
+            ),
+            alignment: .bottom
+        )
+    }
+
+
+    // MARK: - Preserve Vendor
+
+    private func captureVendorStateIfNeeded() {
+
+        guard !capturedVendorState else {
+            return
+        }
+
+        capturedVendorState = true
+
+        originalVendorId = vendorId
+        originalCompanyName = vendorCompanyName
+        originalVendorCategory = vendorCategory
+        originalVendorLogoURL = vendorLogoURL
+
+        print(
+            "[Support Signup] Preserved vendor:",
+            originalVendorId,
+            originalCompanyName
+        )
+    }
+
+
+    // MARK: - Signup Completed
+
+
+
+
+    // MARK: - Cancel Signup
+
+    private func returnToAspen() {
+
+        /*
+         * Restore vendor identity.
+         */
+        accountType = "vendor"
+
+        if originalVendorId > 0 {
+            vendorId = originalVendorId
+        }
+
+        if !originalCompanyName.isEmpty {
+            vendorCompanyName =
+            originalCompanyName
+        }
+
+        if !originalVendorCategory.isEmpty {
+            vendorCategory =
+            originalVendorCategory
+        }
+
+        if !originalVendorLogoURL.isEmpty {
+            vendorLogoURL =
+            originalVendorLogoURL
+        }
+
+        /*
+         * Clear temporary signup/resident UI state.
+         */
+        residentId = 0
+        residentIsSignedUp = false
+
+        residentFirstName = ""
+        residentLastName = ""
+        residentPhone = ""
+        residentAddress = ""
+        residentNeighborhoodName = ""
+        residentDisplayAreaName = ""
+
+        UserDefaults.standard.removeObject(
+            forKey: "residentNeighborhoodId"
+        )
+
+        supportResidentMode = false
+        supportSignupMode = false
+
+        /*
+         * Aspen stays registered normally.
+         */
+        VendorPushRegistration
+        .syncStoredToken()
+
+        print(
+            "[Support Signup] Returned to Aspen"
+        )
+    }
+}
+
 
 // MARK: - Logo to Clubhouse Transition
 
@@ -146,6 +458,7 @@ struct HomeIntroImageView: View {
     @State private var hasStarted = false
 
     var body: some View {
+
         ZStack {
 
             logoImage
@@ -173,7 +486,9 @@ struct HomeIntroImageView: View {
         }
     }
 
+
     private var logoImage: some View {
+
         Image("clubhouse_app_icon")
         .resizable()
         .interpolation(.high)
@@ -189,16 +504,20 @@ struct HomeIntroImageView: View {
             )
         )
         .shadow(
-            color: .cyan.opacity(0.65),
+            color:
+            .cyan.opacity(0.65),
             radius: 18
         )
         .shadow(
-            color: .purple.opacity(0.45),
+            color:
+            .purple.opacity(0.45),
             radius: 24
         )
     }
 
+
     private var clubhouseImage: some View {
+
         Image("hoa")
         .resizable()
         .interpolation(.high)
@@ -210,6 +529,7 @@ struct HomeIntroImageView: View {
             )
         )
         .overlay {
+
             RoundedRectangle(
                 cornerRadius: 24,
                 style: .continuous
@@ -228,13 +548,16 @@ struct HomeIntroImageView: View {
             )
         }
         .shadow(
-            color: .cyan.opacity(0.7),
+            color:
+            .cyan.opacity(0.7),
             radius: 20
         )
     }
 
+
     @MainActor
     private func startIntroOnce() async {
+
         guard !hasStarted else {
             return
         }
@@ -242,10 +565,14 @@ struct HomeIntroImageView: View {
         hasStarted = true
 
         do {
+
             try await Task.sleep(
-                nanoseconds: 1_500_000_000
+                nanoseconds:
+                1_500_000_000
             )
+
         } catch {
+
             return
         }
 
@@ -254,7 +581,9 @@ struct HomeIntroImageView: View {
         }
 
         withAnimation(
-            .easeInOut(duration: 0.8)
+            .easeInOut(
+                duration: 0.8
+            )
         ) {
             showClubhouse = true
         }

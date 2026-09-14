@@ -3,6 +3,18 @@ import SwiftUI
 struct VendorHomeView: View {
     // MARK: - Stored Vendor Account
 
+    @AppStorage("supportSignupMode")
+    private var supportSignupMode = false
+
+    @AppStorage("supportResidentMode")
+    private var supportResidentMode = false
+
+    @AppStorage("residentId")
+    private var supportResidentId = 0
+
+    @AppStorage("residentIsSignedUp")
+    private var supportResidentIsSignedUp = false
+
     @AppStorage("vendorId")
     private var vendorId = 0
 
@@ -153,6 +165,7 @@ struct VendorHomeView: View {
                         header
                         if supportDeviceAuthorized {
                             supportModeButton
+                            supportSignupButton
                         }
 
                         vendorLogoCard
@@ -238,6 +251,70 @@ struct VendorHomeView: View {
                 .frame(maxWidth: .infinity)
             }
         }
+    }
+
+    private var supportSignupButton: some View {
+
+        Button {
+
+            Task {
+                await startSupportSignup()
+            }
+
+        } label: {
+
+            HStack(spacing: 12) {
+
+                Image(
+                    systemName:
+                    "person.badge.plus"
+                )
+                .font(.title3.bold())
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 3
+                ) {
+
+                    Text("Test New Signup")
+                    .font(.headline.bold())
+
+                    Text(
+                        "Test registration & SMS verification"
+                    )
+                    .font(.caption)
+                    .opacity(0.78)
+                }
+
+                Spacer()
+
+                Image(
+                    systemName:
+                    "chevron.right"
+                )
+            }
+            .foregroundStyle(.white)
+            .padding()
+            .frame(
+                maxWidth: .infinity
+            )
+            .background(
+                LinearGradient(
+                    colors: [
+                        .cyan.opacity(0.8),
+                        .purple.opacity(0.85)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 20
+                )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var accountSettingsButton: some View {
@@ -827,6 +904,56 @@ struct VendorHomeView: View {
         await SupportResidentAPI.shared
         .isAuthorizedSupportDevice(
             vendorId: vendorId
+        )
+    }
+
+
+    @MainActor
+    private func startSupportSignup() async {
+
+        /*
+         * Usually we're already on VendorHomeView,
+         * so no resident support subscription exists.
+         *
+         * But this makes the function safe if that
+         * ever changes later.
+         */
+        if supportResidentMode,
+        vendorId > 0 {
+
+            do {
+
+                try await
+                SupportResidentAPI.shared
+                .clearResident(
+                    vendorId: vendorId
+                )
+
+            } catch {
+
+                print(
+                    "[Support Signup] Could not clear previous support resident:",
+                    error.localizedDescription
+                )
+
+                return
+            }
+        }
+
+        /*
+         * Clear resident UI state before starting
+         * the test signup.
+         *
+         * DO NOT change vendorId or accountType.
+         */
+        supportResidentId = 0
+        supportResidentIsSignedUp = false
+
+        supportResidentMode = false
+        supportSignupMode = true
+
+        print(
+            "[Support Signup] Starting new resident signup test"
         )
     }
 
