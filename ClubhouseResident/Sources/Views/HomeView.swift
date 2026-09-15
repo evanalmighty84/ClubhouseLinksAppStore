@@ -274,7 +274,9 @@ struct HomeView: View {
             in: .whitespacesAndNewlines
         ) == "street_fair" {
 
-            StreetFairResidentView()
+            StreetFairIntroView(
+                residentId: residentId
+            )
 
         } else {
 
