@@ -19,48 +19,125 @@ struct HomeView: View {
 
     @AppStorage("supportSignupMode")
     private var supportSignupMode = false
+    @AppStorage("residentHomeMode")
+    private var residentHomeMode = "standard"
+    @Environment(\.scenePhase)
+    private var scenePhase
+
+    @AppStorage("residentHomeMode")
+    private var residentHomeMode = "standard"
+
+    @AppStorage("residentNeighborhoodName")
+    private var residentNeighborhoodName = ""
+
+    @AppStorage("residentNeighborhoodId")
+    private var residentNeighborhoodId = 0
+
+    @State
+    private var resolvedHomeModeResidentId = 0
+
+    @State
+    private var isRefreshingHomeMode = false
 
     var body: some View {
 
+        Group {
+
+            /*
+             * New-signup testing always wins first.
+             */
+            if supportSignupMode {
+
+                SupportSignupContainerView()
+
+                /*
+                 * Before displaying a resident screen,
+                 * resolve their neighborhood's CURRENT
+                 * home mode from Postgres.
+                 */
+            } else if shouldResolveResidentHomeMode &&
+            resolvedHomeModeResidentId != residentId {
+
+                homeModeLoadingView
+
+                /*
+                 * Aspen is supporting an existing resident.
+                 */
+            } else if supportResidentMode &&
+            residentId > 0 {
+
+                residentDestination
+
+                /*
+                 * Normal vendor account.
+                 */
+            } else if accountType == "vendor" &&
+            vendorId > 0 {
+
+                VendorHomeView()
+
+                /*
+                 * Normal resident account.
+                 */
+            } else if residentId > 0 ||
+            residentIsSignedUp {
+
+                residentDestination
+
+            } else {
+
+                homeContent
+            }
+        }
+
         /*
-         * Support signup has highest priority.
+         * Resident changed:
          *
-         * Aspen remains the underlying vendor account,
-         * but we temporarily display the real SignupView
-         * so we can test the complete resident signup /
-         * Twilio verification flow.
+         * - normal login
+         * - signup completed
+         * - Aspen switched resident
+         *
+         * Resolve the mode again.
          */
-        if supportSignupMode {
+        .task(id: residentId) {
 
-            SupportSignupContainerView()
+            guard residentId > 0 else {
 
-        } else if supportResidentMode &&
-        residentId > 0 {
+                resolvedHomeModeResidentId = 0
 
-            /*
-             * Existing resident support mode.
-             */
-            ResidentProfileView()
+                return
+            }
 
-        } else if accountType == "vendor" &&
-        vendorId > 0 {
+            await refreshResidentHomeMode(
+                residentId: residentId
+            )
+        }
 
-            /*
-             * Normal Aspen/vendor mode.
-             */
-            VendorHomeView()
+        /*
+         * This is what makes your SQL command
+         * a real remote ON/OFF switch.
+         *
+         * When the app comes back to the foreground,
+         * check Postgres again.
+         */
+        .onChange(
+            of: scenePhase
+        ) { newPhase in
 
-        } else if residentId > 0 ||
-        residentIsSignedUp {
+            guard
+            newPhase == .active,
+            residentId > 0
+            else {
+                return
+            }
 
-            /*
-             * Normal resident mode.
-             */
-            ResidentProfileView()
+            Task {
 
-        } else {
-
-            homeContent
+                await refreshResidentHomeMode(
+                    residentId: residentId,
+                    force: true
+                )
+            }
         }
     }
 
@@ -449,6 +526,195 @@ struct SupportSignupContainerView: View {
     }
 }
 
+private var shouldResolveResidentHomeMode:
+Bool {
+
+    guard residentId > 0 else {
+        return false
+    }
+
+    /*
+     * Normal resident.
+     */
+    if accountType != "vendor" {
+        return true
+    }
+
+    /*
+     * Aspen temporarily viewing a resident.
+     */
+    if supportResidentMode {
+        return true
+    }
+
+    return false
+}
+
+
+@ViewBuilder
+private var residentDestination:
+some View {
+
+    if residentHomeMode
+    .lowercased()
+    .trimmingCharacters(
+        in: .whitespacesAndNewlines
+    ) == "street_fair" {
+
+        StreetFairResidentView()
+
+    } else {
+
+        ResidentProfileView()
+    }
+}
+
+
+private var homeModeLoadingView:
+some View {
+
+    NeonBackground {
+
+        VStack(spacing: 18) {
+
+            ProgressView()
+            .scaleEffect(1.2)
+            .tint(.cyan)
+
+            Text(
+                "Loading your neighborhood..."
+            )
+            .font(.headline)
+            .foregroundStyle(.white)
+
+            Text(
+                "Checking your Clubhouse Links experience."
+            )
+            .font(.caption)
+            .foregroundStyle(
+                .white.opacity(0.65)
+            )
+        }
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity
+        )
+    }
+}
+
+
+@MainActor
+private func refreshResidentHomeMode(
+residentId targetResidentId: Int,
+force: Bool = false
+) async {
+
+    guard targetResidentId > 0 else {
+        return
+    }
+
+    /*
+     * Don't issue duplicate requests.
+     */
+    guard !isRefreshingHomeMode else {
+        return
+    }
+
+    /*
+     * Unless this is an app-foreground refresh,
+     * don't reload a resident we already resolved.
+     */
+    if !force &&
+    resolvedHomeModeResidentId ==
+    targetResidentId {
+
+        return
+    }
+
+    isRefreshingHomeMode = true
+
+    defer {
+        isRefreshingHomeMode = false
+    }
+
+    do {
+
+        let response =
+        try await
+        ResidentHomeModeAPI.shared
+        .getHomeMode(
+            residentId:
+            targetResidentId
+        )
+
+        /*
+         * Resident could have changed while the
+         * request was in flight.
+         */
+        guard residentId ==
+        targetResidentId
+        else {
+            return
+        }
+
+        let mode =
+        response
+        .resident_home_mode?
+        .lowercased()
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ) ?? "standard"
+
+        residentHomeMode =
+        mode.isEmpty
+        ? "standard"
+        : mode
+
+        if let neighborhoodId =
+        response.neighborhood_id {
+
+            residentNeighborhoodId =
+            neighborhoodId
+        }
+
+        if let neighborhoodName =
+        response.neighborhood_name,
+        !neighborhoodName.isEmpty {
+
+            residentNeighborhoodName =
+            neighborhoodName
+        }
+
+        resolvedHomeModeResidentId =
+        targetResidentId
+
+        print(
+            "[Resident Home Mode]",
+            "resident:",
+            targetResidentId,
+            "neighborhood:",
+            residentNeighborhoodName,
+            "mode:",
+            residentHomeMode
+        )
+
+    } catch {
+
+        /*
+         * If the server is temporarily unavailable,
+         * don't trap the user on a loading screen.
+         *
+         * Keep the last locally-known mode.
+         */
+        print(
+            "[Resident Home Mode] Refresh failed:",
+            error.localizedDescription
+        )
+
+        resolvedHomeModeResidentId =
+        targetResidentId
+    }
+}
 
 // MARK: - Logo to Clubhouse Transition
 
