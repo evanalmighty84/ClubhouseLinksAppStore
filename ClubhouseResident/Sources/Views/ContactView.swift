@@ -28,6 +28,8 @@ Identifiable {
 }
 
 struct ContactView: View {
+
+
     @Environment(\.scenePhase)
     private var scenePhase
 
@@ -52,6 +54,9 @@ struct ContactView: View {
     @AppStorage("residentSelectedTab")
     private var selectedTab = "home"
 
+    @AppStorage("supportResidentMode")
+    private var supportResidentMode = false
+
     @State private var selectedService = "Painting"
     @State private var selectedVendorId = 0
     @State private var message = ""
@@ -68,6 +73,22 @@ struct ContactView: View {
     @State private var residentRequestsLoading = false
     @State private var residentRequestsError = ""
 
+    let preselectedVendorId: Int?
+    let preselectedService: String?
+
+
+    init(
+    preselectedVendorId: Int? = nil,
+    preselectedService: String? = nil
+    ) {
+
+        self.preselectedVendorId =
+        preselectedVendorId
+
+        self.preselectedService =
+        preselectedService
+    }
+
     private let fallbackServiceOptions = [
         "Painting",
         "Pool Service",
@@ -80,10 +101,24 @@ struct ContactView: View {
     ]
 
     private var isVendorAccount: Bool {
-        accountType.lowercased() == "vendor" &&
+
+        /*
+         * Aspen remains a vendor underneath,
+         * but while supportResidentMode is active
+         * the UI should behave like the resident.
+         */
+        if supportResidentMode && residentId > 0 {
+            return false
+        }
+
+        return accountType
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        .lowercased() == "vendor"
+        &&
         vendorId > 0
     }
-
     private var serviceOptions: [String] {
         let vendorCategories = vendorOptions.flatMap { vendor in
             services(for: vendor)
@@ -998,7 +1033,96 @@ struct ContactView: View {
 
         return []
     }
+    private func applyInitialVendorSelection() {
 
+        /*
+         * Street Fair sent us directly here
+         * with a specific contractor.
+         */
+        if let preferredVendorId =
+        preselectedVendorId,
+        let preferredVendor =
+        vendorOptions.first(
+            where: {
+                $0.id == preferredVendorId
+            }
+        ) {
+
+            selectedVendorId =
+            preferredVendor.id
+
+            let vendorServices =
+            services(
+                for: preferredVendor
+            )
+
+
+            /*
+             * Use the requested service if the
+             * vendor actually supports it.
+             */
+            if let preferredService =
+            preselectedService,
+            !preferredService.isEmpty {
+
+                let preferredKey =
+                canonicalService(
+                    preferredService
+                )
+
+                if vendorServices.contains(
+                    preferredKey
+                ) {
+
+                    selectedService =
+                    displayServiceName(
+                        preferredKey
+                    )
+
+                    return
+                }
+            }
+
+
+            /*
+             * Otherwise use this contractor's
+             * first service.
+             */
+            if let firstService =
+            vendorServices.first {
+
+                selectedService =
+                displayServiceName(
+                    firstService
+                )
+            }
+
+            return
+        }
+
+
+        /*
+         * Normal Service Requests screen:
+         * preserve the current behavior.
+         */
+        if let firstVendor =
+        vendorOptions.first {
+
+            selectedVendorId =
+            firstVendor.id
+
+            if let firstService =
+            services(
+                for: firstVendor
+            ).first {
+
+                selectedService =
+                displayServiceName(
+                    firstService
+                )
+            }
+        }
+    }
     private func loadVendorOptions() {
         guard residentId > 0 else {
             vendorOptionsError =
@@ -1040,6 +1164,7 @@ struct ContactView: View {
                 }
 
                 do {
+
                     let decoded =
                     try JSONDecoder().decode(
                         VendorResponse.self,
@@ -1047,23 +1172,21 @@ struct ContactView: View {
                     )
 
                     guard decoded.success == true else {
+
                         vendorOptionsError =
                         decoded.error ??
                         "Could not load vendors."
+
                         return
                     }
 
                     vendorOptions =
                     decoded.vendors ?? []
 
-                    if let firstVendor = vendorOptions.first {
-                        selectedVendorId = firstVendor.id
+                    applyInitialVendorSelection()
 
-                        if let firstService = services(for: firstVendor).first {
-                            selectedService = displayServiceName(firstService)
-                        }
-                    }
                 } catch {
+
                     vendorOptionsError =
                     String(
                         data: data,

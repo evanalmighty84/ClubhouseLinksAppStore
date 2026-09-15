@@ -62,8 +62,96 @@ struct StreetFairVendorDirectoryView: View {
     private let apiBaseURL =
     "https://crm-function-app-5d4de511071d.herokuapp.com" +
     "/server/resident_function/api/residents"
+    // MARK: - Book Appointment
 
+    private func bookingButton(
+    _ vendor: StreetFairVendor
+    ) -> some View {
 
+        NavigationLink {
+
+            ContactView(
+                preselectedVendorId:
+                vendor.id,
+
+                preselectedService:
+                bookingService(
+                    for: vendor
+                )
+            )
+
+        } label: {
+
+            HStack(spacing: 10) {
+
+                Image(
+                    systemName:
+                    "calendar.badge.plus"
+                )
+
+                Text("Book Appointment")
+                .font(.headline.bold())
+            }
+            .foregroundStyle(.white)
+            .frame(
+                maxWidth: .infinity
+            )
+            .padding(
+                .vertical,
+                14
+            )
+            .background(
+                LinearGradient(
+                    colors: [
+                        .orange,
+                        .purple
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 14,
+                    style: .continuous
+                )
+            )
+            .overlay {
+
+                RoundedRectangle(
+                    cornerRadius: 14,
+                    style: .continuous
+                )
+                .stroke(
+                    .white.opacity(0.20),
+                    lineWidth: 1
+                )
+            }
+        }
+        .buttonStyle(.plain)
+    }
+    private func bookingService(
+    for vendor: StreetFairVendor
+    ) -> String {
+
+        if let categories =
+        vendor.categories,
+        let firstCategory =
+        categories.first,
+        !firstCategory.isEmpty {
+
+            return firstCategory
+        }
+
+        if let category =
+        vendor.category,
+        !category.isEmpty {
+
+            return category
+        }
+
+        return "General Contractor"
+    }
     var body: some View {
 
         NeonBackground {
@@ -281,6 +369,8 @@ struct StreetFairVendorDirectoryView: View {
 
 
             contactButtons(vendor)
+
+            bookingButton(vendor)
         }
         .padding(18)
         .frame(

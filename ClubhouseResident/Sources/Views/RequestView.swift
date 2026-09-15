@@ -16,6 +16,8 @@ struct RequestView: View {
     @AppStorage("residentPhone") private var phone = ""
     @AppStorage("residentAddress") private var address = ""
     @AppStorage("residentSelectedTab") private var selectedTab = "home"
+    @AppStorage("supportResidentMode")
+    private var supportResidentMode = false
     @AppStorage("accountType")
     private var accountType = ""
 
@@ -47,7 +49,12 @@ struct RequestView: View {
 
     private let vendorNotListedId = -1
     private var isVendorAccount: Bool {
-        accountType
+
+        if supportResidentMode && residentId > 0 {
+            return false
+        }
+
+        return accountType
         .trimmingCharacters(
             in: .whitespacesAndNewlines
         )
@@ -215,13 +222,17 @@ struct RequestView: View {
         }
     }
     var body: some View {
+
         Group {
-            if accountType == "vendor",
-            vendorId > 0 {
+
+            if isVendorAccount {
+
                 VendorCompletedProjectsView(
                     vendorId: vendorId
                 )
+
             } else {
+
                 residentSubmissionScreen
             }
         }

@@ -204,7 +204,7 @@ private struct StreetFairVideoOverlay: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.bottom, 75)
+                .padding(.bottom, 15)
             }
         }
         .onAppear {
