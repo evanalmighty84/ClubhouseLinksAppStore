@@ -1,8 +1,15 @@
 import SwiftUI
+import MapKit
+import UIKit
 
 struct StreetFairResidentView: View {
 
     // MARK: - Resident State
+    @State
+    private var lookAroundScene: MKLookAroundScene?
+
+    @State
+    private var isLoadingLookAround = false
 
     @AppStorage("residentId")
     private var residentId = 0
@@ -110,7 +117,26 @@ struct StreetFairResidentView: View {
             icon: "house.fill"
         )
     ]
+    private var cleanAddress: String {
 
+        address.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+    }
+
+
+    private var residentDisplayName: String {
+
+        let name =
+        "\(firstName) \(lastName)"
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        return name.isEmpty
+        ? "Your Home"
+        : name
+    }
 
     // MARK: - Display Values
 
@@ -167,7 +193,245 @@ struct StreetFairResidentView: View {
 
         return "STREET FAIR"
     }
+    // MARK: - Resident Home / Look Around
 
+    @ViewBuilder
+    private var streetFairResidentHomeCard: some View {
+
+        if let lookAroundScene {
+
+            streetFairLookAroundCard(
+                scene: lookAroundScene
+            )
+
+        } else if isLoadingLookAround {
+
+            VStack(spacing: 12) {
+
+                ProgressView()
+                .tint(.cyan)
+                .scaleEffect(1.1)
+
+                Text("Loading your home...")
+                .font(.subheadline.bold())
+                .foregroundStyle(
+                    .white.opacity(0.80)
+                )
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 230)
+            .background(
+                .white.opacity(0.06)
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 24
+                )
+            )
+
+        } else {
+
+            ZStack(
+                alignment: .bottomLeading
+            ) {
+
+                Image(
+                    "clubhouse_links_home_fallback"
+                )
+                .resizable()
+                .scaledToFill()
+                .frame(
+                    maxWidth: .infinity
+                )
+                .frame(height: 230)
+                .clipped()
+
+
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        .black.opacity(0.08),
+                        .black.opacity(0.82)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 5
+                ) {
+
+                    Label(
+                        "Clubhouse Links",
+                        systemImage:
+                        "house.fill"
+                    )
+                    .font(.caption.bold())
+                    .foregroundStyle(.cyan)
+
+
+                    Text(residentDisplayName)
+                    .font(.title2.bold())
+                    .foregroundStyle(.white)
+
+
+                    if !cleanAddress.isEmpty {
+
+                        Text(cleanAddress)
+                        .font(.subheadline)
+                        .foregroundStyle(
+                            .white.opacity(0.86)
+                        )
+                        .fixedSize(
+                            horizontal: false,
+                            vertical: true
+                        )
+                    }
+
+
+                    Text(
+                        "Apple Look Around is not available for this address."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(
+                        .white.opacity(0.60)
+                    )
+                }
+                .padding(18)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 230)
+            .background(
+                .white.opacity(0.08)
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 24
+                )
+            )
+            .overlay {
+
+                RoundedRectangle(
+                    cornerRadius: 24
+                )
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            .cyan,
+                            .purple
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.5
+                )
+            }
+        }
+    }
+
+
+    private func streetFairLookAroundCard(
+    scene: MKLookAroundScene
+    ) -> some View {
+
+        ZStack(
+            alignment: .bottomLeading
+        ) {
+
+            StreetFairLookAroundControllerView(
+                scene: scene
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 230)
+            .allowsHitTesting(false)
+
+
+            LinearGradient(
+                colors: [
+                    .clear,
+                    .black.opacity(0.08),
+                    .black.opacity(0.88)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+
+            VStack(
+                alignment: .leading,
+                spacing: 5
+            ) {
+
+                Label(
+                    "Apple Look Around",
+                    systemImage:
+                    "binoculars.fill"
+                )
+                .font(.caption.bold())
+                .foregroundStyle(.cyan)
+
+
+                Text(residentDisplayName)
+                .font(.title2.bold())
+                .foregroundStyle(.white)
+
+
+                if !phone.isEmpty {
+
+                    Text(phone)
+                    .font(.subheadline)
+                    .foregroundStyle(
+                        .white.opacity(0.76)
+                    )
+                }
+
+
+                Text(cleanAddress)
+                .font(.subheadline)
+                .foregroundStyle(
+                    .white.opacity(0.86)
+                )
+                .fixedSize(
+                    horizontal: false,
+                    vertical: true
+                )
+            }
+            .padding(18)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 230)
+        .background(
+            .white.opacity(0.08)
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 24
+            )
+        )
+        .overlay {
+
+            RoundedRectangle(
+                cornerRadius: 24
+            )
+            .stroke(
+                LinearGradient(
+                    colors: [
+                        .cyan,
+                        .purple
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1.5
+            )
+        }
+        .shadow(
+            color: .cyan.opacity(0.25),
+            radius: 12
+        )
+    }
 
     // MARK: - Body
 
@@ -229,6 +493,18 @@ struct StreetFairResidentView: View {
         ) {
 
             SupportResidentPickerView()
+        }
+        .onAppear {
+
+            loadResidentLookAround()
+        }
+        .onChange(of: residentId) { _ in
+
+            loadResidentLookAround()
+        }
+        .onChange(of: address) { _ in
+
+            loadResidentLookAround()
         }
     }
 
@@ -341,33 +617,7 @@ struct StreetFairResidentView: View {
 
         VStack(spacing: 18) {
 
-            ZStack {
-
-                Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            .orange.opacity(0.35),
-                            .purple.opacity(0.20)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(
-                    width: 110,
-                    height: 110
-                )
-
-                Image(
-                    systemName:
-                    "house.and.flag.fill"
-                )
-                .font(
-                    .system(size: 48)
-                )
-                .foregroundStyle(.orange)
-            }
+            streetFairResidentHomeCard
 
             VStack(spacing: 8) {
 
@@ -1192,7 +1442,131 @@ struct StreetFairResidentView: View {
             )
         )
     }
+    // MARK: - Apple Look Around
 
+    private func loadResidentLookAround() {
+
+        let requestedResidentId =
+        residentId
+
+        let requestedAddress =
+        cleanAddress
+
+        lookAroundScene = nil
+        isLoadingLookAround = false
+
+
+        guard
+        requestedResidentId > 0,
+        !requestedAddress.isEmpty
+        else {
+            return
+        }
+
+
+        isLoadingLookAround = true
+
+
+        Task {
+
+            do {
+
+                let searchRequest =
+                MKLocalSearch.Request()
+
+                searchRequest
+                .naturalLanguageQuery =
+                requestedAddress
+
+                searchRequest.resultTypes =
+                .address
+
+
+                let search =
+                MKLocalSearch(
+                    request:
+                    searchRequest
+                )
+
+                let searchResponse =
+                try await search.start()
+
+
+                guard let mapItem =
+                searchResponse
+                .mapItems
+                .first
+                else {
+
+                    await MainActor.run {
+
+                        guard
+                        requestedResidentId ==
+                        residentId,
+                        requestedAddress ==
+                        cleanAddress
+                        else {
+                            return
+                        }
+
+                        lookAroundScene = nil
+                        isLoadingLookAround = false
+                    }
+
+                    return
+                }
+
+
+                let sceneRequest =
+                MKLookAroundSceneRequest(
+                    mapItem: mapItem
+                )
+
+
+                let scene =
+                try await
+                sceneRequest.scene
+
+
+                await MainActor.run {
+
+                    guard
+                    requestedResidentId ==
+                    residentId,
+                    requestedAddress ==
+                    cleanAddress
+                    else {
+                        return
+                    }
+
+                    lookAroundScene = scene
+                    isLoadingLookAround = false
+                }
+
+            } catch {
+
+                await MainActor.run {
+
+                    guard
+                    requestedResidentId ==
+                    residentId,
+                    requestedAddress ==
+                    cleanAddress
+                    else {
+                        return
+                    }
+
+                    lookAroundScene = nil
+                    isLoadingLookAround = false
+                }
+
+                print(
+                    "[Street Fair Look Around]",
+                    error.localizedDescription
+                )
+            }
+        }
+    }
 
     // MARK: - Return to Vendor
 
@@ -1301,7 +1675,46 @@ struct StreetFairResidentView: View {
     }
 }
 
+private struct StreetFairLookAroundControllerView:
+UIViewControllerRepresentable {
 
+    let scene: MKLookAroundScene
+
+
+    func makeUIViewController(
+    context: Context
+    ) -> MKLookAroundViewController {
+
+        let controller =
+        MKLookAroundViewController(
+            scene: scene
+        )
+
+        controller.isNavigationEnabled =
+        false
+
+        controller.showsRoadLabels =
+        false
+
+        return controller
+    }
+
+
+    func updateUIViewController(
+    _ controller:
+    MKLookAroundViewController,
+    context: Context
+    ) {
+
+        controller.scene = scene
+
+        controller.isNavigationEnabled =
+        false
+
+        controller.showsRoadLabels =
+        false
+    }
+}
 // MARK: - Street Fair Service Model
 
 private struct StreetFairService:
