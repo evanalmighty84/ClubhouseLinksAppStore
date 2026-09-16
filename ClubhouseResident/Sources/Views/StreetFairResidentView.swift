@@ -455,16 +455,14 @@ struct StreetFairResidentView: View {
 
                         eventExplanationCard
 
-                        howItWorksCard
-
-                        servicesSection
-
-                        mainActionCard
+                        StreetFairVendorDirectoryView(
+                            residentId: residentId,
+                            embedded: true
+                        )
 
                         inviteCodeCard
 
                         regularPortalCard
-
                         Spacer(
                             minLength: 120
                         )
@@ -655,6 +653,62 @@ struct StreetFairResidentView: View {
                 .center
             )
             .lineSpacing(4)
+            Divider()
+            .overlay(
+                .white.opacity(0.15)
+            )
+            .padding(.vertical, 6)
+
+
+            VStack(
+                alignment: .leading,
+                spacing: 16
+            ) {
+
+                HStack(spacing: 10) {
+
+                    Image(
+                        systemName:
+                        "list.number"
+                    )
+                    .foregroundStyle(.cyan)
+
+                    Text("How It Works")
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+
+                    Spacer()
+                }
+
+
+                compactStreetFairStep(
+                    number: "1",
+                    title: "Tell us what you need",
+                    text:
+                    "Choose the home service or project you would like help with."
+                )
+
+
+                compactStreetFairStep(
+                    number: "2",
+                    title: "Get connected",
+                    text:
+                    "Choose a participating Street Fair professional."
+                )
+
+
+                compactStreetFairStep(
+                    number: "3",
+                    title:
+                    "Schedule during Street Fair week",
+                    text:
+                    "Arrange a quote, consultation, or available work while contractors are already in the neighborhood."
+                )
+            }
+            .frame(
+                maxWidth: .infinity,
+                alignment: .leading
+            )
         }
         .padding(24)
         .frame(
@@ -700,7 +754,66 @@ struct StreetFairResidentView: View {
         )
     }
 
+    private func compactStreetFairStep(
+    number: String,
+    title: String,
+    text: String
+    ) -> some View {
 
+        HStack(
+            alignment: .top,
+            spacing: 12
+        ) {
+
+            ZStack {
+
+                Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            .orange,
+                            .purple
+                        ],
+                        startPoint:
+                        .topLeading,
+                        endPoint:
+                        .bottomTrailing
+                    )
+                )
+                .frame(
+                    width: 32,
+                    height: 32
+                )
+
+                Text(number)
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+            }
+
+
+            VStack(
+                alignment: .leading,
+                spacing: 3
+            ) {
+
+                Text(title)
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+
+                Text(text)
+                .font(.caption)
+                .foregroundStyle(
+                    .white.opacity(0.67)
+                )
+                .fixedSize(
+                    horizontal: false,
+                    vertical: true
+                )
+            }
+
+            Spacer()
+        }
+    }
     // MARK: - What Is It?
 
     private var eventExplanationCard: some View {

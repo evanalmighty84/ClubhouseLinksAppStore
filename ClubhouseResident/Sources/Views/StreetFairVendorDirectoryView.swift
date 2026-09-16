@@ -38,10 +38,18 @@ struct StreetFairVendor: Decodable, Identifiable {
 
 
 // MARK: - Street Fair Vendor Directory
-
 struct StreetFairVendorDirectoryView: View {
 
     let residentId: Int
+    let embedded: Bool
+
+    init(
+    residentId: Int,
+    embedded: Bool = false
+    ) {
+        self.residentId = residentId
+        self.embedded = embedded
+    }
 
     @Environment(\.dismiss)
     private var dismiss
@@ -50,13 +58,16 @@ struct StreetFairVendorDirectoryView: View {
     private var neighborhoodName = ""
 
     @State
-    private var vendors: [StreetFairVendor] = []
+    private var vendors:
+    [StreetFairVendor] = []
 
     @State
     private var isLoading = false
 
     @State
     private var errorMessage = ""
+
+
 
 
     private let apiBaseURL =
@@ -154,6 +165,77 @@ struct StreetFairVendorDirectoryView: View {
     }
     var body: some View {
 
+        Group {
+
+            if embedded {
+
+                embeddedDirectory
+
+            } else {
+
+                standaloneDirectory
+            }
+        }
+        .task(id: residentId) {
+
+            await loadStreetFairVendors()
+        }
+    }
+    // MARK: - Embedded Directory
+
+    private var embeddedDirectory: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 16
+        ) {
+
+            VStack(
+                alignment: .leading,
+                spacing: 5
+            ) {
+
+                Text(
+                    "Street Fair Contractors"
+                )
+                .font(.title2.bold())
+                .foregroundStyle(.white)
+
+
+                Text(
+                    "These local professionals are participating in \(neighborhoodName.isEmpty ? "your neighborhood's" : neighborhoodName + "'s") Clubhouse Links Street Fair."
+                )
+                .font(.subheadline)
+                .foregroundStyle(
+                    .white.opacity(0.68)
+                )
+            }
+
+
+            if isLoading {
+
+                loadingView
+
+            } else if !errorMessage.isEmpty {
+
+                errorView
+
+            } else if vendors.isEmpty {
+
+                emptyView
+
+            } else {
+
+                vendorList
+            }
+        }
+    }
+
+
+    // MARK: - Standalone Directory
+
+    private var standaloneDirectory: some View {
+
         NeonBackground {
 
             ScrollView {
@@ -179,21 +261,23 @@ struct StreetFairVendorDirectoryView: View {
                         vendorList
                     }
 
-                    Spacer(minLength: 100)
+                    Spacer(
+                        minLength: 100
+                    )
                 }
                 .padding()
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(
+                .hidden
+            )
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarBackButtonHidden(
+            true
+        )
         .toolbar(
             .hidden,
             for: .navigationBar
         )
-        .task(id: residentId) {
-
-            await loadStreetFairVendors()
-        }
     }
 
 
