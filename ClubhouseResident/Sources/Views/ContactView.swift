@@ -526,7 +526,7 @@ struct ContactView: View {
                 .foregroundStyle(.cyan)
 
                 TextField(
-                    "Describe what you need",
+                    "Describe what you need. What day works best for you?",
                     text: $message,
                     axis: .vertical
                 )

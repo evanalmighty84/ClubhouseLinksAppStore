@@ -1209,64 +1209,143 @@ struct StreetFairResidentView: View {
         )
     }
 
+    private var clubhouseLinksAppURL: URL {
 
+        URL(
+            string:
+            "https://apps.apple.com/us/app/clubhouse-links/id6790003233"
+        )!
+    }
+
+
+    private var streetFairShareMessage: String {
+
+        """
+        Hey, I just joined the Street Fair on Clubhouse Links and you can too! Use this invite code: \(inviteCode)
+
+        \(clubhouseLinksAppURL.absoluteString)
+        """
+    }
     // MARK: - Invite Code
+
+    // MARK: - Invite Code / Share
 
     private var inviteCodeCard: some View {
 
-        VStack(spacing: 8) {
-
-            Text(
-                "YOUR NEIGHBORHOOD ACCESS CODE"
+        ShareLink(
+            item: clubhouseLinksAppURL,
+            subject: Text(
+                "\(neighborhoodDisplayName) Street Fair"
+            ),
+            message: Text(
+                streetFairShareMessage
             )
-            .font(.caption.bold())
-            .tracking(1.1)
-            .foregroundStyle(
-                .white.opacity(0.58)
-            )
+        ) {
 
-            Text(inviteCode)
-            .font(
-                .system(
-                    size: 28,
-                    weight: .heavy,
-                    design: .rounded
+            VStack(spacing: 10) {
+
+                HStack(spacing: 8) {
+
+                    Image(
+                        systemName:
+                        "square.and.arrow.up.fill"
+                    )
+
+                    Text(
+                        "SHARE WITH A NEIGHBOR"
+                    )
+                    .font(.caption.bold())
+                    .tracking(1.1)
+                }
+                .foregroundStyle(
+                    .cyan
+                )
+
+
+                Text(
+                    "INVITE YOUR NEIGHBORS TO DOWNLOAD THE APP WITH THE NEIGHBORHOOD ACCESS CODE"
+                )
+                .font(.caption.bold())
+                .tracking(1.1)
+                .foregroundStyle(
+                    .white.opacity(0.58)
+                )
+
+
+                Text(inviteCode)
+                .font(
+                    .system(
+                        size: 28,
+                        weight: .heavy,
+                        design: .rounded
+                    )
+                )
+                .foregroundStyle(
+                    .yellow
+                )
+
+
+                Text(
+                    "Tap to invite someone to the \(neighborhoodDisplayName) Street Fair."
+                )
+                .font(.caption)
+                .foregroundStyle(
+                    .white.opacity(0.68)
+                )
+                .multilineTextAlignment(
+                    .center
+                )
+
+
+                HStack(spacing: 6) {
+
+                    Text("Share Invite")
+
+                    Image(
+                        systemName:
+                        "arrow.up.forward"
+                    )
+                }
+                .font(.subheadline.bold())
+                .foregroundStyle(.cyan)
+                .padding(.top, 3)
+            }
+            .padding(18)
+            .frame(
+                maxWidth: .infinity
+            )
+            .background(
+                LinearGradient(
+                    colors: [
+                        .black.opacity(0.30),
+                        .purple.opacity(0.16)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
             )
-            .foregroundStyle(.yellow)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 20
+                )
+            )
+            .overlay {
 
-            Text(
-                "You're registered for the \(neighborhoodDisplayName) Street Fair experience."
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .white.opacity(0.66)
-            )
-            .multilineTextAlignment(
-                .center
+                RoundedRectangle(
+                    cornerRadius: 20
+                )
+                .stroke(
+                    .yellow.opacity(0.40),
+                    lineWidth: 1.2
+                )
+            }
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius: 20
+                )
             )
         }
-        .padding(18)
-        .frame(
-            maxWidth: .infinity
-        )
-        .background(
-            .black.opacity(0.20)
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 20
-            )
-        )
-        .overlay(
-            RoundedRectangle(
-                cornerRadius: 20
-            )
-            .stroke(
-                .yellow.opacity(0.30),
-                lineWidth: 1
-            )
-        )
+        .buttonStyle(.plain)
     }
 
 
