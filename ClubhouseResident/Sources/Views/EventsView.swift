@@ -2353,13 +2353,10 @@ View {
 
                 Label(
                     "Event Calendar",
-                    systemImage:
-                    "calendar"
-                )
-                .font(
+                    systemImage: "calendar"
+                ).font(
                     .title3.bold()
-                )
-                .foregroundStyle(
+                ).foregroundStyle(
                     .white
                 )
 
@@ -2374,21 +2371,17 @@ View {
                 } label: {
 
                     Image(
-                        systemName:
-                        "chevron.left"
+                        systemName: "chevron.left"
                     )
                 }
 
                 Text(
                     monthTitle
-                )
-                .font(
+                ).font(
                     .headline.bold()
-                )
-                .foregroundStyle(
+                ).foregroundStyle(
                     .cyan
-                )
-                .frame(
+                ).frame(
                     minWidth: 145
                 )
 
@@ -2401,20 +2394,16 @@ View {
                 } label: {
 
                     Image(
-                        systemName:
-                        "chevron.right"
+                        systemName: "chevron.right"
                     )
                 }
-            }
-            .foregroundStyle(
+            }.foregroundStyle(
                 .cyan
             )
 
             LazyVGrid(
-                columns:
-                Array(
-                    repeating:
-                    GridItem(
+                columns: Array(
+                    repeating: GridItem(
                         .flexible(),
                         spacing: 6
                     ),
@@ -2425,72 +2414,57 @@ View {
 
                 ForEach(
                     Array(
-                        weekdaySymbols
-                        .enumerated()
+                        weekdaySymbols.enumerated()
                     ),
-                    id:
-                    \.offset
+                    id: \.offset
                 ) {
                     _,
                     symbol in
 
                     Text(
                         symbol
-                    )
-                    .font(
+                    ).font(
                         .caption.bold()
-                    )
-                    .foregroundStyle(
+                    ).foregroundStyle(
                         .white.opacity(
                             0.55
                         )
-                    )
-                    .frame(
-                        maxWidth:
-                        .infinity
+                    ).frame(
+                        maxWidth: .infinity
                     )
                 }
 
                 ForEach(
                     Array(
-                        days
-                        .enumerated()
+                        days.enumerated()
                     ),
-                    id:
-                    \.offset
+                    id: \.offset
                 ) {
                     _,
                     date in
 
                     if let date {
 
-                        let dayEvents =
-                        events(
-                            on:
-                            date
+                        let dayEvents = events(
+                            on: date
                         )
 
-                        let eventDay =
-                        !dayEvents.isEmpty
+                        let eventDay = !dayEvents.isEmpty
 
-                        let today =
-                        isToday(
+                        let today = isToday(
                             date
                         )
 
 
                         Button {
 
-                            guard eventDay
-                            else {
+                            guard eventDay else {
                                 return
                             }
 
-                            selectedCalendarEvents =
-                            dayEvents
+                            selectedCalendarEvents = dayEvents
 
-                            showingCalendarEvents =
-                            true
+                            showingCalendarEvents = true
 
                         } label: {
 
@@ -2498,64 +2472,48 @@ View {
 
                                 if eventDay {
 
-                                    Circle()
-                                    .fill(
+                                    Circle().fill(
                                         LinearGradient(
                                             colors: [
                                                 .yellow,
                                                 .orange
                                             ],
-                                            startPoint:
-                                            .topLeading,
-                                            endPoint:
-                                            .bottomTrailing
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
                                         )
-                                    )
-                                    .shadow(
-                                        color:
-                                        .yellow.opacity(
+                                    ).shadow(
+                                        color: .yellow.opacity(
                                             0.45
                                         ),
-                                        radius:
-                                        6
+                                        radius: 6
                                     )
 
                                 } else if today {
 
-                                    Circle()
-                                    .stroke(
+                                    Circle().stroke(
                                         .cyan,
-                                        lineWidth:
-                                        2
+                                        lineWidth: 2
                                     )
                                 }
 
 
                                 Text(
                                     "\(calendar.component(.day, from: date))"
-                                )
-                                .font(
+                                ).font(
                                     .subheadline.bold()
+                                ).foregroundStyle(
+                                    eventDay ? .black: .white
                                 )
-                                .foregroundStyle(
-                                    eventDay
-                                    ? .black
-                                    : .white
-                                )
-                            }
-                            .frame(
-                                height:
-                                42
+                            }.frame(
+                                height: 42
                             )
-                        }
-                        .buttonStyle(
+                        }.buttonStyle(
                             .plain
                         )
 
                     } else {
 
-                        Color.clear
-                        .frame(
+                        Color.clear.frame(
                             height: 42
                         )
                     }
@@ -2566,34 +2524,26 @@ View {
                 spacing: 8
             ) {
 
-                Circle()
-                .fill(
+                Circle().fill(
                     .yellow
-                )
-                .frame(
+                ).frame(
                     width: 10,
                     height: 10
                 )
 
                 Text(
                     "Scheduled event"
-                )
-                .font(
+                ).font(
                     .caption.bold()
-                )
-                .foregroundStyle(
+                ).foregroundStyle(
                     .white.opacity(
                         0.72
                     )
                 )
             }
-        }
-        .padding(18)
-        .frame(
-            maxWidth:
-            .infinity
-        )
-        .background(
+        }.padding(18).frame(
+            maxWidth: .infinity
+        ).background(
             LinearGradient(
                 colors: [
                     .cyan.opacity(
@@ -2603,41 +2553,33 @@ View {
                         0.24
                     )
                 ],
-                startPoint:
-                .topLeading,
-                endPoint:
-                .bottomTrailing
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
-        )
-        .clipShape(
+        ).clipShape(
             RoundedRectangle(
                 cornerRadius: 24
             )
-        )
-        .overlay(
+        ).overlay(
             RoundedRectangle(
                 cornerRadius: 24
-            )
-            .stroke(
+            ).stroke(
                 .cyan.opacity(
                     0.55
                 ),
                 lineWidth: 1
             )
-        )
-        .sheet(
-            isPresented:
-            $showingCalendarEvents
+        ).sheet(
+            isPresented: $showingCalendarEvents
         ) {
 
             CalendarDayEventsSheet(
-                events:
-                selectedCalendarEvents
-            )
-            .presentationDetents([
+                events: selectedCalendarEvents
+            ).presentationDetents([
                 .medium,
                 .large
             ])
+        }
     }
 
     private func moveMonth(
