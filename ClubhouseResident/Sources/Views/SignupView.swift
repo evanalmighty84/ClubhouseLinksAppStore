@@ -103,6 +103,7 @@ struct SignupView: View {
     @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
     @AppStorage("residentNeighborhoodName") private var residentNeighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
+    @AppStorage("residentBoardOfDirectors") private var residentBoardOfDirectors = false
 
     @AppStorage("accountType") private var accountType = ""
     @AppStorage("vendorId") private var vendorId = 0
@@ -1285,6 +1286,7 @@ struct SignupView: View {
                 residentNeighborhoodId = 0
                 displayAreaName = ""
                 residentNeighborhoodName = ""
+                residentBoardOfDirectors = false
 
                 VendorPushRegistration
                 .requestAuthorization()
@@ -1553,6 +1555,8 @@ struct SignupView: View {
                 residentApprovalStatus = resident.approval_status
                 residentNeighborhoodId =
                 resident.neighborhood_id ?? 0
+                residentBoardOfDirectors =
+                resident.board_of_directors ?? false
                 displayAreaName =
                 resident.display_area_name ?? ""
                 residentNeighborhoodName =
@@ -1713,4 +1717,6 @@ struct ResidentAccount: Codable {
     let display_area_name: String?
     let approval_status: String
     let sms_verified: Bool
+
+    let board_of_directors: Bool?
 }

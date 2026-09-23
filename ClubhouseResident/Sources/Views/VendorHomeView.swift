@@ -166,6 +166,7 @@ struct VendorHomeView: View {
                         if supportDeviceAuthorized {
                             supportModeButton
                             supportSignupButton
+                            hoaDemoAccountButton
                         }
 
                         vendorLogoCard
@@ -315,6 +316,92 @@ struct VendorHomeView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private var hoaDemoAccountButton:
+    some View {
+
+        Button {
+
+            Task {
+                await switchToHoaDemoAccount()
+            }
+
+        } label: {
+
+            HStack(
+                spacing: 12
+            ) {
+
+                Image(
+                    systemName:
+                    "house.and.flag.fill"
+                )
+                .font(
+                    .title3.bold()
+                )
+
+                VStack(
+                    alignment:
+                    .leading,
+                    spacing: 3
+                ) {
+
+                    Text(
+                        "HOA Demo Account"
+                    )
+                    .font(
+                        .headline.bold()
+                    )
+
+                    Text(
+                        "Crowley Park Board Member"
+                    )
+                    .font(
+                        .caption
+                    )
+                    .opacity(
+                        0.78
+                    )
+                }
+
+                Spacer()
+
+                Image(
+                    systemName:
+                    "chevron.right"
+                )
+            }
+            .foregroundStyle(
+                .white
+            )
+            .padding()
+            .frame(
+                maxWidth:
+                .infinity
+            )
+            .background(
+                LinearGradient(
+                    colors: [
+                        .purple,
+                        .cyan
+                    ],
+                    startPoint:
+                    .leading,
+                    endPoint:
+                    .trailing
+                )
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius:
+                    20
+                )
+            )
+        }
+        .buttonStyle(
+            .plain
+        )
     }
 
     private var accountSettingsButton: some View {
@@ -955,6 +1042,114 @@ struct VendorHomeView: View {
         print(
             "[Support Signup] Starting new resident signup test"
         )
+    }
+
+
+    // MARK: - HOA Demo Account
+
+    @MainActor
+    private func switchToHoaDemoAccount()
+    async {
+
+        let demoResidentId =
+        960
+
+        guard vendorId > 0
+        else {
+
+            profileErrorMessage =
+            "Vendor account not found."
+
+            return
+        }
+
+        profileErrorMessage =
+        ""
+
+        do {
+
+            /*
+             * If Aspen somehow already has another
+             * support resident active, clear that
+             * subscription first.
+             */
+            if supportResidentMode {
+
+                try await
+                SupportResidentAPI.shared
+                .clearResident(
+                    vendorId:
+                    vendorId
+                )
+            }
+
+
+            /*
+             * Register Aspen as the support device
+             * for the Crowley Park HOA demo resident.
+             */
+            let resident =
+            try await
+            SupportResidentAPI.shared
+            .switchResident(
+                vendorId:
+                vendorId,
+                residentId:
+                demoResidentId
+            )
+
+
+            /*
+             * Keep Aspen logged in underneath,
+             * but tell the app to display this
+             * resident temporarily.
+             */
+            supportResidentId =
+            resident.id
+
+            supportResidentIsSignedUp =
+            true
+
+            supportResidentMode =
+            true
+
+            supportSignupMode =
+            false
+
+
+            /*
+             * Resident 960 is our Crowley Park
+             * HOA board-member demo account.
+             *
+             * EventsView will verify this against
+             * the API again when it loads.
+             */
+            UserDefaults.standard.set(
+                true,
+                forKey:
+                "residentBoardOfDirectors"
+            )
+
+
+            /*
+             * Refresh the stored APNs token so
+             * Aspen can receive support pushes
+             * for this resident.
+             */
+            VendorPushRegistration
+            .syncStoredToken()
+
+
+            print(
+                "[HOA Demo] Switched to resident:",
+                resident.id
+            )
+
+        } catch {
+
+            profileErrorMessage =
+            error.localizedDescription
+        }
     }
 
     // MARK: - Local Vendor Storage

@@ -4,6 +4,18 @@ import UIKit
 import UserNotifications
 
 extension Notification.Name {
+
+    static let communityJobCompletedReceived =
+    Notification.Name(
+        "communityJobCompletedReceived"
+    )
+
+    static let communityJobCompletedNotificationTapped =
+    Notification.Name(
+        "communityJobCompletedNotificationTapped"
+    )
+
+
     static let vendorServiceRequestNotificationTapped =
     Notification.Name(
         "vendorServiceRequestNotificationTapped"
@@ -22,6 +34,16 @@ extension Notification.Name {
     static let residentServiceRequestNotificationTapped =
     Notification.Name(
         "residentServiceRequestNotificationTapped"
+    )
+
+    static let hoaEventPublishedReceived =
+    Notification.Name(
+        "hoaEventPublishedReceived"
+    )
+
+    static let hoaEventPublishedNotificationTapped =
+    Notification.Name(
+        "hoaEventPublishedNotificationTapped"
     )
 }
 
@@ -508,26 +530,65 @@ UNUserNotificationCenterDelegate {
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        let userInfo =
-        notification.request.content.userInfo
 
-        if isResidentServiceRequestNotification(
+        let userInfo =
+        notification
+        .request
+        .content
+        .userInfo
+
+
+        if isCommunityJobCompletedNotification(
             userInfo
         ) {
+
+            NotificationCenter.default.post(
+                name:
+                .communityJobCompletedReceived,
+                object:
+                nil,
+                userInfo:
+                userInfo
+            )
+
+        } else if isHoaEventPublishedNotification(
+            userInfo
+        ) {
+
+            NotificationCenter.default.post(
+                name:
+                .hoaEventPublishedReceived,
+                object:
+                nil,
+                userInfo:
+                userInfo
+            )
+
+        } else if isResidentServiceRequestNotification(
+            userInfo
+        ) {
+
             NotificationCenter.default.post(
                 name:
                 .residentServiceRequestStatusChanged,
-                object: nil,
-                userInfo: userInfo
+                object:
+                nil,
+                userInfo:
+                userInfo
             )
+
         } else {
+
             NotificationCenter.default.post(
                 name:
                 .vendorServiceRequestReceived,
-                object: nil,
-                userInfo: userInfo
+                object:
+                nil,
+                userInfo:
+                userInfo
             )
         }
+
 
         return [
             .banner,
@@ -544,13 +605,24 @@ UNUserNotificationCenterDelegate {
         let userInfo =
         response.notification.request.content.userInfo
 
-        if isResidentServiceRequestNotification(
+        if isCommunityJobCompletedNotification(
             userInfo
         ) {
+
+            handleCommunityJobCompletedTap(
+                userInfo
+            )
+
+        } else if isResidentServiceRequestNotification(
+            userInfo
+        ) {
+
             handleResidentNotificationTap(
                 userInfo
             )
+
         } else {
+
             handleVendorNotificationTap(
                 userInfo
             )
@@ -580,6 +652,70 @@ UNUserNotificationCenterDelegate {
         NotificationCenter.default.post(
             name:
             .residentServiceRequestNotificationTapped,
+            object: nil,
+            userInfo: userInfo
+        )
+    }
+
+    private func isHoaEventPublishedNotification(
+    _ userInfo: [AnyHashable: Any]
+    ) -> Bool {
+
+        let notificationType =
+        stringValue(
+            userInfo[
+                "notification_type"
+            ]
+        )
+        .lowercased()
+
+        return notificationType ==
+        "hoa_event_published"
+    }
+
+    private func isCommunityJobCompletedNotification(
+    _ userInfo: [AnyHashable: Any]
+    ) -> Bool {
+
+        let notificationType =
+        stringValue(
+            userInfo[
+                "notification_type"
+            ]
+        )
+        .lowercased()
+
+        return notificationType ==
+        "community_job_completed"
+    }
+
+
+    private func handleCommunityJobCompletedTap(
+    _ userInfo: [AnyHashable: Any]
+    ) {
+
+        let defaults =
+        UserDefaults.standard
+
+        let projectId =
+        stringValue(
+            userInfo[
+                "project_id"
+            ]
+        )
+
+        if !projectId.isEmpty {
+
+            defaults.set(
+                projectId,
+                forKey:
+                "residentOpenCompletedProjectId"
+            )
+        }
+
+        NotificationCenter.default.post(
+            name:
+            .communityJobCompletedNotificationTapped,
             object: nil,
             userInfo: userInfo
         )
