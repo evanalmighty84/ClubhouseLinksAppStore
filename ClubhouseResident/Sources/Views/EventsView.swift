@@ -3654,7 +3654,7 @@ ObservableObject {
                 residentId:
                 residentId,
                 isHoaBoardMember:
-                isHoaBoardViewActive
+                isHoaBoardMember
             )
 
         } catch {

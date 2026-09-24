@@ -812,8 +812,7 @@ struct ContactView: View {
     }
     @ViewBuilder
     private func requestStatusBadge(
-    _ rawStatus:
-    String?
+    _ rawStatus: String?
     ) -> some View {
 
         let status =
@@ -821,60 +820,31 @@ struct ContactView: View {
         .lowercased() ??
         "pending"
 
-
-        let title:
-        String
-
-        let icon:
-        String
-
-        let color:
-        Color
-
+        let title: String
+        let icon: String
+        let color: Color
 
         switch status {
 
         case "accepted":
-
-            title =
-            "Accepted"
-
-            icon =
-            "checkmark.circle.fill"
-
-            color =
-            .green
-
+            title = "Accepted"
+            icon = "checkmark.circle.fill"
+            color = .green
 
         case "declined":
-
-            title =
-            "Declined"
-
-            icon =
-            "xmark.circle.fill"
-
-            color =
-            .red
-
+            title = "Declined"
+            icon = "xmark.circle.fill"
+            color = .red
 
         default:
-
-            title =
-            "Pending"
-
-            icon =
-            "clock.fill"
-
-            color =
-            .orange
+            title = "Pending"
+            icon = "clock.fill"
+            color = .orange
         }
 
-
-        Label(
+        return Label(
             title,
-            systemImage:
-            icon
+            systemImage: icon
         )
         .font(
             .caption.bold()
