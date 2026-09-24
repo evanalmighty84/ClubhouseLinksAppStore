@@ -73,6 +73,27 @@ struct ContactView: View {
     @State private var residentRequestsLoading = false
     @State private var residentRequestsError = ""
 
+    @State
+    private var incomingNeighborRequests:
+    [NeighborContactRequest] = []
+
+    @State
+    private var outgoingNeighborRequests:
+    [NeighborContactRequest] = []
+
+    @State
+    private var neighborRequestsLoading = false
+
+    @State
+    private var neighborRequestsError = ""
+
+    @State
+    private var respondingNeighborRequestIds:
+    Set<Int> = []
+
+    @State
+    private var neighborRequestMessage = ""
+
     let preselectedVendorId: Int?
     let preselectedService: String?
 
@@ -88,7 +109,513 @@ struct ContactView: View {
         self.preselectedService =
         preselectedService
     }
+    private func neighborRequestGroupTitle(
+    _ title:
+    String,
+    systemImage:
+    String,
+    count:
+    Int
+    ) -> some View {
 
+        HStack(
+            spacing:
+            8
+        ) {
+
+            Image(
+                systemName:
+                systemImage
+            )
+            .foregroundStyle(
+                .orange
+            )
+
+            Text(
+                title
+            )
+            .font(
+                .headline.bold()
+            )
+            .foregroundStyle(
+                .white
+            )
+
+            Text(
+                "\(count)"
+            )
+            .font(
+                .caption.bold()
+            )
+            .foregroundStyle(
+                .black
+            )
+            .padding(
+                .horizontal,
+                8
+            )
+            .padding(
+                .vertical,
+                3
+            )
+            .background(
+                .orange
+            )
+            .clipShape(
+                Capsule()
+            )
+
+            Spacer()
+        }
+    }
+
+    private func incomingNeighborRequestCard(
+    _ request:
+    NeighborContactRequest
+    ) -> some View {
+
+        VStack(
+            alignment:
+            .leading,
+            spacing:
+            12
+        ) {
+
+            HStack(
+                alignment:
+                .top
+            ) {
+
+                VStack(
+                    alignment:
+                    .leading,
+                    spacing:
+                    4
+                ) {
+
+                    Text(
+                        neighborDisplayName(
+                            first:
+                            request.requester_first_name,
+                            last:
+                            request.requester_last_name
+                        )
+                    )
+                    .font(
+                        .headline.bold()
+                    )
+                    .foregroundStyle(
+                        .white
+                    )
+
+
+                    if let vendor =
+                    request.vendor_name {
+
+                        Text(
+                            "About \(vendor)"
+                        )
+                        .font(
+                            .subheadline.bold()
+                        )
+                        .foregroundStyle(
+                            .cyan
+                        )
+                    }
+
+
+                    if let address =
+                    cleanedText(
+                        request.requester_address
+                    ) {
+
+                        Label(
+                            address,
+                            systemImage:
+                            "house.fill"
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .white.opacity(
+                                0.65
+                            )
+                        )
+                    }
+                }
+
+
+                Spacer()
+
+
+                requestStatusBadge(
+                    request.status
+                )
+            }
+
+
+            if let message =
+            cleanedText(
+                request.message
+            ) {
+
+                Text(
+                    message
+                )
+                .font(
+                    .subheadline
+                )
+                .foregroundStyle(
+                    .white.opacity(
+                        0.78
+                    )
+                )
+            }
+
+
+            let status =
+            request.status?
+            .lowercased() ??
+            ""
+
+
+            if status ==
+            "pending" {
+
+                HStack(
+                    spacing:
+                    10
+                ) {
+
+                    Button {
+
+                        Task {
+
+                            await respondToNeighborRequest(
+                                request,
+                                action:
+                                "decline"
+                            )
+                        }
+
+                    } label: {
+
+                        Text(
+                            "Decline"
+                        )
+                        .font(
+                            .headline.bold()
+                        )
+                        .foregroundStyle(
+                            .white
+                        )
+                        .frame(
+                            maxWidth:
+                            .infinity
+                        )
+                        .padding(
+                            .vertical,
+                            11
+                        )
+                        .background(
+                            .red.opacity(
+                                0.55
+                            )
+                        )
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius:
+                                12
+                            )
+                        )
+                    }
+                    .buttonStyle(
+                        .plain
+                    )
+
+
+                    Button {
+
+                        Task {
+
+                            await respondToNeighborRequest(
+                                request,
+                                action:
+                                "accept"
+                            )
+                        }
+
+                    } label: {
+
+                        if respondingNeighborRequestIds
+                        .contains(
+                            request.id
+                        ) {
+
+                            ProgressView()
+                            .tint(
+                                .white
+                            )
+                            .frame(
+                                maxWidth:
+                                .infinity
+                            )
+                            .padding(
+                                .vertical,
+                                11
+                            )
+
+                        } else {
+
+                            Text(
+                                "Accept"
+                            )
+                            .font(
+                                .headline.bold()
+                            )
+                            .foregroundStyle(
+                                .white
+                            )
+                            .frame(
+                                maxWidth:
+                                .infinity
+                            )
+                            .padding(
+                                .vertical,
+                                11
+                            )
+                        }
+                    }
+                    .background(
+                        .green.opacity(
+                            0.65
+                        )
+                    )
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius:
+                            12
+                        )
+                    )
+                    .buttonStyle(
+                        .plain
+                    )
+                }
+                .disabled(
+                    respondingNeighborRequestIds
+                    .contains(
+                        request.id
+                    )
+                )
+
+            } else if
+            status ==
+            "accepted",
+            let phone =
+            cleanedText(
+                request.requester_phone
+            ) {
+
+                neighborPhoneButton(
+                    name:
+                    request.requester_first_name ??
+                    "Neighbor",
+                    phone:
+                    phone
+                )
+            }
+        }
+        .padding(
+            15
+        )
+        .background(
+            .black.opacity(
+                0.22
+            )
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius:
+                18
+            )
+        )
+    }
+
+    private func outgoingNeighborRequestCard(
+    _ request:
+    NeighborContactRequest
+    ) -> some View {
+
+        VStack(
+            alignment:
+            .leading,
+            spacing:
+            12
+        ) {
+
+            HStack(
+                alignment:
+                .top
+            ) {
+
+                VStack(
+                    alignment:
+                    .leading,
+                    spacing:
+                    4
+                ) {
+
+                    Text(
+                        neighborDisplayName(
+                            first:
+                            request.target_first_name,
+                            last:
+                            request.target_last_name
+                        )
+                    )
+                    .font(
+                        .headline.bold()
+                    )
+                    .foregroundStyle(
+                        .white
+                    )
+
+
+                    if let vendor =
+                    request.vendor_name {
+
+                        Text(
+                            "About \(vendor)"
+                        )
+                        .font(
+                            .subheadline.bold()
+                        )
+                        .foregroundStyle(
+                            .cyan
+                        )
+                    }
+
+
+                    if let address =
+                    cleanedText(
+                        request.target_address
+                    ) {
+
+                        Label(
+                            address,
+                            systemImage:
+                            "house.fill"
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .white.opacity(
+                                0.65
+                            )
+                        )
+                    }
+                }
+
+
+                Spacer()
+
+
+                requestStatusBadge(
+                    request.status
+                )
+            }
+
+
+            if let message =
+            cleanedText(
+                request.message
+            ) {
+
+                Text(
+                    message
+                )
+                .font(
+                    .subheadline
+                )
+                .foregroundStyle(
+                    .white.opacity(
+                        0.78
+                    )
+                )
+            }
+
+
+            if request.status?
+            .lowercased() ==
+            "accepted",
+            let phone =
+            cleanedText(
+                request.target_phone
+            ) {
+
+                neighborPhoneButton(
+                    name:
+                    request.target_first_name ??
+                    "Neighbor",
+                    phone:
+                    phone
+                )
+            }
+        }
+        .padding(
+            15
+        )
+        .background(
+            .black.opacity(
+                0.22
+            )
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius:
+                18
+            )
+        )
+    }
+
+    private var sortedIncomingNeighborRequests:
+    [NeighborContactRequest] {
+
+        incomingNeighborRequests.sorted {
+            left,
+            right in
+
+            let leftPending =
+            left.status?
+            .lowercased() ==
+            "pending"
+
+            let rightPending =
+            right.status?
+            .lowercased() ==
+            "pending"
+
+            if leftPending !=
+            rightPending {
+
+                return leftPending
+            }
+
+            return left.id >
+            right.id
+        }
+    }
+
+
+    private var sortedOutgoingNeighborRequests:
+    [NeighborContactRequest] {
+
+        outgoingNeighborRequests.sorted {
+            $0.id > $1.id
+        }
+    }
     private let fallbackServiceOptions = [
         "Painting",
         "Pool Service",
@@ -173,10 +700,12 @@ struct ContactView: View {
     private var residentContactView: some View {
         NeonBackground {
             ScrollView {
+
                 VStack(
                     alignment: .leading,
                     spacing: 20
                 ) {
+
                     Text("Contact")
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
@@ -188,6 +717,8 @@ struct ContactView: View {
                     )
 
                     residentRequestsSection
+
+                    neighborContactRequestsSection
 
                     helpFormCard
 
@@ -204,6 +735,10 @@ struct ContactView: View {
                 }
                 .padding()
             }
+            .refreshable {
+
+                await loadAllResidentRequests()
+            }
             .scrollDismissesKeyboard(
                 .interactively
             )
@@ -212,7 +747,8 @@ struct ContactView: View {
             loadVendorOptions()
         }
         .task(id: residentId) {
-            await loadResidentRequests()
+
+            await loadAllResidentRequests()
         }
         .onChange(of: scenePhase) { phase in
             guard phase == .active else {
@@ -220,7 +756,7 @@ struct ContactView: View {
             }
 
             Task {
-                await loadResidentRequests()
+                await loadAllResidentRequests()
             }
         }
         .onReceive(
@@ -243,6 +779,30 @@ struct ContactView: View {
                 await loadResidentRequests()
             }
         }
+
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for:
+                .neighborContactRequestChanged
+            )
+        ) { _ in
+
+            Task {
+                await loadNeighborContactRequests()
+            }
+        }
+
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for:
+                .neighborContactRequestNotificationTapped
+            )
+        ) { _ in
+
+            Task {
+                await loadNeighborContactRequests()
+            }
+        }
         .onChange(of: selectedService) { _ in
             selectFirstVendorForService()
         }
@@ -250,7 +810,222 @@ struct ContactView: View {
             syncServiceToSelectedVendor()
         }
     }
+    @ViewBuilder
+    private func requestStatusBadge(
+    _ rawStatus:
+    String?
+    ) -> some View {
 
+        let status =
+        rawStatus?
+        .lowercased() ??
+        "pending"
+
+
+        let title:
+        String
+
+        let icon:
+        String
+
+        let color:
+        Color
+
+
+        switch status {
+
+        case "accepted":
+
+            title =
+            "Accepted"
+
+            icon =
+            "checkmark.circle.fill"
+
+            color =
+            .green
+
+
+        case "declined":
+
+            title =
+            "Declined"
+
+            icon =
+            "xmark.circle.fill"
+
+            color =
+            .red
+
+
+        default:
+
+            title =
+            "Pending"
+
+            icon =
+            "clock.fill"
+
+            color =
+            .orange
+        }
+
+
+        Label(
+            title,
+            systemImage:
+            icon
+        )
+        .font(
+            .caption.bold()
+        )
+        .foregroundStyle(
+            color
+        )
+    }
+
+
+    private func neighborPhoneButton(
+    name:
+    String,
+    phone:
+    String
+    ) -> some View {
+
+        let digits =
+        phone.filter {
+            $0.isNumber
+        }
+
+
+        return Link(
+            destination:
+            URL(
+                string:
+                "tel:\(digits)"
+            )!
+        ) {
+
+            HStack {
+
+                Image(
+                    systemName:
+                    "phone.fill"
+                )
+
+                Text(
+                    "Call \(name) • \(formatNeighborPhone(phone))"
+                )
+                .font(
+                    .subheadline.bold()
+                )
+
+                Spacer()
+            }
+            .foregroundStyle(
+                .white
+            )
+            .padding(
+                12
+            )
+            .background(
+                .green.opacity(
+                    0.55
+                )
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius:
+                    12
+                )
+            )
+        }
+    }
+
+
+    private func cleanedText(
+    _ value:
+    String?
+    ) -> String? {
+
+        guard let value else {
+            return nil
+        }
+
+        let clean =
+        value
+        .trimmingCharacters(
+            in:
+            .whitespacesAndNewlines
+        )
+
+        return clean.isEmpty
+        ? nil
+        : clean
+    }
+
+
+    private func neighborDisplayName(
+    first:
+    String?,
+    last:
+    String?
+    ) -> String {
+
+        let values =
+        [
+            first,
+            last
+        ]
+        .compactMap {
+            cleanedText(
+                $0
+            )
+        }
+
+        return values.isEmpty
+        ? "Neighbor"
+        : values.joined(
+            separator:
+            " "
+        )
+    }
+
+
+    private func formatNeighborPhone(
+    _ phone:
+    String
+    ) -> String {
+
+        var digits =
+        phone.filter {
+            $0.isNumber
+        }
+
+        if
+        digits.count ==
+        11,
+        digits.first ==
+        "1" {
+
+            digits.removeFirst()
+        }
+
+
+        guard
+        digits.count ==
+        10
+        else {
+
+            return phone
+        }
+
+
+        return
+        "(\(digits.prefix(3))) " +
+        "\(digits.dropFirst(3).prefix(3))-" +
+        "\(digits.suffix(4))"
+    }
     @ViewBuilder
     private var residentRequestsSection: some View {
         VStack(
@@ -410,7 +1185,349 @@ struct ContactView: View {
             )
         )
     }
+    @ViewBuilder
+    private var neighborContactRequestsSection:
+    some View {
 
+        VStack(
+            alignment:
+            .leading,
+            spacing:
+            16
+        ) {
+
+            HStack {
+
+                VStack(
+                    alignment:
+                    .leading,
+                    spacing:
+                    4
+                ) {
+
+                    Text(
+                        "Neighbor Contact Requests"
+                    )
+                    .font(
+                        .title2.bold()
+                    )
+                    .foregroundStyle(
+                        .white
+                    )
+
+
+                    Text(
+                        "Ask neighbors about companies they have used."
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .white.opacity(
+                            0.68
+                        )
+                    )
+                }
+
+
+                Spacer()
+
+
+                Button {
+
+                    Task {
+
+                        await loadNeighborContactRequests()
+                    }
+
+                } label: {
+
+                    Image(
+                        systemName:
+                        "arrow.clockwise"
+                    )
+                    .font(
+                        .headline.bold()
+                    )
+                    .foregroundStyle(
+                        .cyan
+                    )
+                    .frame(
+                        width:
+                        42,
+                        height:
+                        42
+                    )
+                    .background(
+                        .black.opacity(
+                            0.22
+                        )
+                    )
+                    .clipShape(
+                        Circle()
+                    )
+                }
+                .buttonStyle(
+                    .plain
+                )
+                .disabled(
+                    neighborRequestsLoading
+                )
+            }
+
+
+            if neighborRequestsLoading &&
+            incomingNeighborRequests.isEmpty &&
+            outgoingNeighborRequests.isEmpty {
+
+                HStack(
+                    spacing:
+                    10
+                ) {
+
+                    ProgressView()
+                    .tint(
+                        .cyan
+                    )
+
+                    Text(
+                        "Loading neighbor requests..."
+                    )
+                    .font(
+                        .subheadline
+                    )
+                    .foregroundStyle(
+                        .white.opacity(
+                            0.72
+                        )
+                    )
+                }
+                .padding(
+                    .vertical,
+                    12
+                )
+
+            } else if
+            !neighborRequestsError.isEmpty &&
+            incomingNeighborRequests.isEmpty &&
+            outgoingNeighborRequests.isEmpty {
+
+                VStack(
+                    alignment:
+                    .leading,
+                    spacing:
+                    8
+                ) {
+
+                    Label(
+                        "Could not load neighbor requests",
+                        systemImage:
+                        "exclamationmark.triangle.fill"
+                    )
+                    .font(
+                        .headline
+                    )
+                    .foregroundStyle(
+                        .orange
+                    )
+
+
+                    Text(
+                        neighborRequestsError
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .white.opacity(
+                            0.68
+                        )
+                    )
+                }
+
+            } else if
+            incomingNeighborRequests.isEmpty &&
+            outgoingNeighborRequests.isEmpty {
+
+                VStack(
+                    spacing:
+                    10
+                ) {
+
+                    Image(
+                        systemName:
+                        "person.2.circle.fill"
+                    )
+                    .font(
+                        .system(
+                            size:
+                            42
+                        )
+                    )
+                    .foregroundStyle(
+                        .cyan
+                    )
+
+
+                    Text(
+                        "No neighbor requests yet"
+                    )
+                    .font(
+                        .headline.bold()
+                    )
+                    .foregroundStyle(
+                        .white
+                    )
+
+
+                    Text(
+                        "Requests to speak with neighbors about local vendors will appear here."
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .white.opacity(
+                            0.68
+                        )
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
+                }
+                .frame(
+                    maxWidth:
+                    .infinity
+                )
+                .padding(
+                    .vertical,
+                    18
+                )
+
+            } else {
+
+                if !incomingNeighborRequests.isEmpty {
+
+                    neighborRequestGroupTitle(
+                        "Incoming",
+                        systemImage:
+                        "tray.and.arrow.down.fill",
+                        count:
+                        incomingNeighborRequests.count
+                    )
+
+
+                    VStack(
+                        spacing:
+                        12
+                    ) {
+
+                        ForEach(
+                            sortedIncomingNeighborRequests
+                        ) {
+                            request in
+
+                            incomingNeighborRequestCard(
+                                request
+                            )
+                        }
+                    }
+                }
+
+
+                if !outgoingNeighborRequests.isEmpty {
+
+                    neighborRequestGroupTitle(
+                        "Sent",
+                        systemImage:
+                        "paperplane.fill",
+                        count:
+                        outgoingNeighborRequests.count
+                    )
+                    .padding(
+                        .top,
+                        incomingNeighborRequests.isEmpty
+                        ? 0
+                        : 8
+                    )
+
+
+                    VStack(
+                        spacing:
+                        12
+                    ) {
+
+                        ForEach(
+                            sortedIncomingNeighborRequests
+                        ) {
+                            request in
+
+                            outgoingNeighborRequestCard(
+                                request
+                            )
+                        }
+                    }
+                }
+            }
+
+
+            if !neighborRequestMessage.isEmpty {
+
+                Text(
+                    neighborRequestMessage
+                )
+                .font(
+                    .caption.bold()
+                )
+                .foregroundStyle(
+                    .cyan
+                )
+            }
+        }
+        .padding(
+            18
+        )
+        .frame(
+            maxWidth:
+            .infinity
+        )
+        .background(
+            LinearGradient(
+                colors: [
+                    .orange.opacity(
+                        0.10
+                    ),
+                    .purple.opacity(
+                        0.24
+                    )
+                ],
+                startPoint:
+                .topLeading,
+                endPoint:
+                .bottomTrailing
+            )
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius:
+                28
+            )
+        )
+        .overlay {
+
+            RoundedRectangle(
+                cornerRadius:
+                28
+            )
+            .stroke(
+                .orange.opacity(
+                    0.45
+                ),
+                lineWidth:
+                1
+            )
+        }
+    }
     private var helpFormCard: some View {
         VStack(
             alignment: .leading,
@@ -896,6 +2013,10 @@ struct ContactView: View {
             )
         )
     }
+
+
+
+
     @MainActor
     private func loadResidentRequests() async {
         guard residentId > 0 else {
@@ -978,6 +2099,338 @@ struct ContactView: View {
             return
         } catch {
             residentRequestsError =
+            error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func loadAllResidentRequests()
+    async {
+
+        await loadResidentRequests()
+
+        await loadNeighborContactRequests()
+    }
+    @MainActor
+    private func loadNeighborContactRequests()
+    async {
+
+        guard residentId > 0 else {
+
+            incomingNeighborRequests =
+            []
+
+            outgoingNeighborRequests =
+            []
+
+            neighborRequestsError =
+            "Resident profile not found."
+
+            return
+        }
+
+
+        guard !neighborRequestsLoading
+        else {
+            return
+        }
+
+
+        neighborRequestsLoading =
+        true
+
+        neighborRequestsError =
+        ""
+
+
+        defer {
+
+            neighborRequestsLoading =
+            false
+        }
+
+
+        let urlString =
+        "https://crm-function-app-5d4de511071d.herokuapp.com" +
+        "/server/resident_function/api/residents/" +
+        "\(residentId)/neighbor-contact-requests"
+
+
+        guard let url =
+        URL(
+            string:
+            urlString
+        )
+        else {
+
+            neighborRequestsError =
+            "Invalid neighbor-request URL."
+
+            return
+        }
+
+
+        var request =
+        URLRequest(
+            url:
+            url
+        )
+
+        request.cachePolicy =
+        .reloadIgnoringLocalCacheData
+
+        request.setValue(
+            "no-cache",
+            forHTTPHeaderField:
+            "Cache-Control"
+        )
+
+
+        do {
+
+            let (
+            data,
+            response
+            ) =
+            try await URLSession
+            .shared
+            .data(
+                for:
+                request
+            )
+
+
+            guard let httpResponse =
+            response
+            as?
+            HTTPURLResponse
+            else {
+
+                neighborRequestsError =
+                "Invalid response from server."
+
+                return
+            }
+
+
+            let decoded =
+            try JSONDecoder()
+            .decode(
+                NeighborContactRequestsResponse.self,
+                from:
+                data
+            )
+
+
+            guard
+            (200...299)
+            .contains(
+                httpResponse.statusCode
+            ),
+            decoded.success ==
+            true
+            else {
+
+                neighborRequestsError =
+                decoded.error ??
+                "Could not load neighbor requests."
+
+                return
+            }
+
+
+            incomingNeighborRequests =
+            decoded.incoming ??
+            []
+
+            outgoingNeighborRequests =
+            decoded.outgoing ??
+            []
+
+        } catch is CancellationError {
+
+            return
+
+        } catch let error
+        as URLError
+        where error.code ==
+        .cancelled {
+
+            return
+
+        } catch {
+
+            neighborRequestsError =
+            error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func respondToNeighborRequest(
+    _ contactRequest:
+    NeighborContactRequest,
+    action:
+    String
+    ) async {
+
+        guard residentId > 0 else {
+            return
+        }
+
+
+        guard
+        action ==
+        "accept" ||
+        action ==
+        "decline"
+        else {
+            return
+        }
+
+
+        respondingNeighborRequestIds
+        .insert(
+            contactRequest.id
+        )
+
+
+        neighborRequestMessage =
+        ""
+
+
+        defer {
+
+            respondingNeighborRequestIds
+            .remove(
+                contactRequest.id
+            )
+        }
+
+
+        let urlString =
+        "https://crm-function-app-5d4de511071d.herokuapp.com" +
+        "/server/resident_function/api/residents/" +
+        "\(residentId)/neighbor-contact-requests/" +
+        "\(contactRequest.id)/respond"
+
+
+        guard let url =
+        URL(
+            string:
+            urlString
+        )
+        else {
+
+            neighborRequestMessage =
+            "Could not respond to the request."
+
+            return
+        }
+
+
+        var request =
+        URLRequest(
+            url:
+            url
+        )
+
+        request.httpMethod =
+        "PATCH"
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+            "Content-Type"
+        )
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+            "Accept"
+        )
+
+
+        do {
+
+            request.httpBody =
+            try JSONSerialization
+            .data(
+                withJSONObject: [
+                    "action":
+                    action
+                ]
+            )
+
+
+            let (
+            data,
+            response
+            ) =
+            try await URLSession
+            .shared
+            .data(
+                for:
+                request
+            )
+
+
+            guard let httpResponse =
+            response
+            as?
+            HTTPURLResponse
+            else {
+
+                neighborRequestMessage =
+                "Invalid server response."
+
+                return
+            }
+
+
+            if
+            (200...299)
+            .contains(
+                httpResponse.statusCode
+            ) {
+
+                neighborRequestMessage =
+                action ==
+                "accept"
+                ? "Contact request accepted."
+                : "Contact request declined."
+
+                await loadNeighborContactRequests()
+
+                return
+            }
+
+
+            if let object =
+            try?
+            JSONSerialization
+            .jsonObject(
+                with:
+                data
+            )
+            as?
+            [String: Any],
+            let error =
+            object["error"]
+            as?
+            String {
+
+                neighborRequestMessage =
+                error
+
+            } else {
+
+                neighborRequestMessage =
+                "Could not update the request."
+            }
+
+        } catch {
+
+            neighborRequestMessage =
             error.localizedDescription
         }
     }

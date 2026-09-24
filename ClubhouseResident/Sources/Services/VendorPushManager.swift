@@ -5,6 +5,16 @@ import UserNotifications
 
 extension Notification.Name {
 
+    static let neighborContactRequestChanged =
+    Notification.Name(
+        "neighborContactRequestChanged"
+    )
+
+    static let neighborContactRequestNotificationTapped =
+    Notification.Name(
+        "neighborContactRequestNotificationTapped"
+    )
+
     static let communityJobCompletedReceived =
     Notification.Name(
         "communityJobCompletedReceived"
@@ -528,26 +538,21 @@ UNUserNotificationCenterDelegate {
 
     func userNotificationCenter(
     _ center: UNUserNotificationCenter,
-    willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
+    didReceive response: UNNotificationResponse
+    ) async {
 
         let userInfo =
-        notification
+        response
+        .notification
         .request
         .content
         .userInfo
-
 
         if isCommunityJobCompletedNotification(
             userInfo
         ) {
 
-            NotificationCenter.default.post(
-                name:
-                .communityJobCompletedReceived,
-                object:
-                nil,
-                userInfo:
+            handleCommunityJobCompletedTap(
                 userInfo
             )
 
@@ -557,59 +562,18 @@ UNUserNotificationCenterDelegate {
 
             NotificationCenter.default.post(
                 name:
-                .hoaEventPublishedReceived,
+                .hoaEventPublishedNotificationTapped,
                 object:
                 nil,
                 userInfo:
                 userInfo
             )
 
-        } else if isResidentServiceRequestNotification(
+        } else if isNeighborContactNotification(
             userInfo
         ) {
 
-            NotificationCenter.default.post(
-                name:
-                .residentServiceRequestStatusChanged,
-                object:
-                nil,
-                userInfo:
-                userInfo
-            )
-
-        } else {
-
-            NotificationCenter.default.post(
-                name:
-                .vendorServiceRequestReceived,
-                object:
-                nil,
-                userInfo:
-                userInfo
-            )
-        }
-
-
-        return [
-            .banner,
-            .list,
-            .sound,
-            .badge
-        ]
-    }
-
-    func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    didReceive response: UNNotificationResponse
-    ) async {
-        let userInfo =
-        response.notification.request.content.userInfo
-
-        if isCommunityJobCompletedNotification(
-            userInfo
-        ) {
-
-            handleCommunityJobCompletedTap(
+            handleNeighborContactNotificationTap(
                 userInfo
             )
 
@@ -629,6 +593,68 @@ UNUserNotificationCenterDelegate {
         }
     }
 
+    private func isNeighborContactNotification(
+    _ userInfo: [AnyHashable: Any]
+    ) -> Bool {
+
+        let notificationType =
+        stringValue(
+            userInfo[
+                "notification_type"
+            ]
+        )
+        .lowercased()
+
+        return
+        notificationType ==
+        "neighbor_contact_request" ||
+        notificationType ==
+        "neighbor_contact_request_accepted" ||
+        notificationType ==
+        "neighbor_contact_request_declined"
+    }
+
+
+    private func handleNeighborContactNotificationTap(
+    _ userInfo: [AnyHashable: Any]
+    ) {
+
+        let defaults =
+        UserDefaults.standard
+
+        let requestId =
+        stringValue(
+            userInfo[
+                "contact_request_id"
+            ]
+        )
+
+        if !requestId.isEmpty {
+
+            defaults.set(
+                requestId,
+                forKey:
+                "residentOpenNeighborContactRequestId"
+            )
+        }
+
+        /*
+         * Neighbor contact requests live in
+         * the resident Contact / Request Service tab.
+         */
+        defaults.set(
+            "contact",
+            forKey:
+            "residentSelectedTab"
+        )
+
+        NotificationCenter.default.post(
+            name:
+            .neighborContactRequestNotificationTapped,
+            object: nil,
+            userInfo: userInfo
+        )
+    }
     private func handleResidentNotificationTap(
     _ userInfo: [AnyHashable: Any]
     ) {

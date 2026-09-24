@@ -234,14 +234,96 @@ struct ResidentProfileView: View {
             for: nil
         )
     }
-    private var neighborServiceOptions: [String] {
-        let services = neighborProjects.map { $0.service }.filter { !$0.isEmpty }
-        return ["All Services"] + Array(Set(services)).sorted()
+    private var neighborServiceOptions:
+    [String] {
+
+        var services:
+        [String] = []
+
+        for vendor in neighborVendors {
+
+            if let categories =
+            vendor.categories {
+
+                services.append(
+                    contentsOf:
+                    categories
+                )
+            }
+
+            if let category =
+            vendor.category,
+            !category.isEmpty {
+
+                services.append(
+                    category
+                )
+            }
+        }
+
+        let cleaned =
+        services
+        .map {
+            $0.trimmingCharacters(
+                in:
+                .whitespacesAndNewlines
+            )
+        }
+        .filter {
+            !$0.isEmpty
+        }
+
+        return [
+            "All Services"
+        ] +
+        Array(
+            Set(cleaned)
+        )
+        .sorted()
     }
 
-    private var neighborVendorOptions: [String] {
-        let vendors = neighborProjects.map { $0.vendorName }.filter { !$0.isEmpty }
-        return ["All Vendors"] + Array(Set(vendors)).sorted()
+
+    private var neighborVendorOptions:
+    [String] {
+
+        let vendors =
+        neighborVendors
+        .filter {
+            vendor in
+
+            if selectedNeighborService ==
+            "All Services" {
+
+                return true
+            }
+
+            let categories =
+            vendor.categories ??
+            []
+
+            if categories.contains(
+                selectedNeighborService
+            ) {
+                return true
+            }
+
+            return vendor.category ==
+            selectedNeighborService
+        }
+        .map {
+            $0.company_name
+        }
+        .filter {
+            !$0.isEmpty
+        }
+
+        return [
+            "All Vendors"
+        ] +
+        Array(
+            Set(vendors)
+        )
+        .sorted()
     }
 
     private var filteredNeighborProjects: [NeighborVendorProject] {
@@ -1176,13 +1258,55 @@ struct ResidentProfileView: View {
                 .tint(.cyan)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
-            } else if filteredNeighborProjects.isEmpty {
-                Text("No nearby completed projects found yet.")
-                .font(.headline)
-                .foregroundStyle(.white.opacity(0.7))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-            } else {
+} else if filteredNeighborProjects.isEmpty {
+
+VStack(
+spacing: 14
+) {
+
+Image(
+"neighborhood-projects-placeholder"
+)
+.resizable()
+.scaledToFill()
+.frame(
+maxWidth:
+.infinity
+)
+.frame(
+height:
+180
+)
+.clipShape(
+RoundedRectangle(
+cornerRadius:
+18
+)
+)
+
+Text(
+"This is where you will see your neighbors' projects when they have work done."
+)
+.font(
+.subheadline.weight(
+.semibold
+)
+)
+.foregroundStyle(
+.white.opacity(
+0.78
+)
+)
+.multilineTextAlignment(
+.center
+)
+.padding(
+.horizontal,
+8
+)
+}
+
+}  else {
                 TabView {
                     ForEach(filteredNeighborProjects) { project in
                         neighborProjectSlide(project)

@@ -13,14 +13,19 @@ struct EventsView: View {
     @AppStorage("residentDisplayAreaName")
     private var displayAreaName = ""
 
+    @AppStorage("hoaResidentPreviewMode")
+    private var hoaResidentPreviewMode = false
+
     @AppStorage("residentNeighborhoodId")
     private var residentNeighborhoodId = 0
 
     @AppStorage("residentNeighborhoodName")
     private var residentNeighborhoodName = ""
 
+
     @AppStorage("residentBoardOfDirectors")
     private var residentBoardOfDirectors = false
+
 
     @StateObject
     private var viewModel = EventsViewModel()
@@ -43,6 +48,13 @@ struct EventsView: View {
         residentId > 0 &&
         residentBoardOfDirectors
     }
+
+    private var isHoaBoardViewActive: Bool {
+        isHoaBoardMember &&
+        !hoaResidentPreviewMode
+    }
+
+
 
     private var effectiveNeighborhoodName: String {
 
@@ -85,11 +97,11 @@ struct EventsView: View {
 
                         roleLoadingCard
 
-                    } else if isHoaBoardMember {
+    } else if isHoaBoardViewActive {
 
-                        hoaBoardEventsContent
+        hoaBoardEventsContent
 
-                    } else {
+    } else {
 
                         residentEventsContent
                     }
@@ -117,7 +129,7 @@ struct EventsView: View {
                     residentId:
                     residentId,
                     isHoaBoardMember:
-                    isHoaBoardMember
+                    isHoaBoardViewActive
                 )
             }
         }
@@ -142,7 +154,7 @@ struct EventsView: View {
                 residentId:
                 residentId,
                 isHoaBoardMember:
-                isHoaBoardMember
+                isHoaBoardViewActive
             )
         }
         .sheet(
@@ -166,7 +178,7 @@ struct EventsView: View {
                         residentId:
                         residentId,
                         isHoaBoardMember:
-                        isHoaBoardMember
+                        isHoaBoardViewActive
                     )
                 }
             }
@@ -257,6 +269,86 @@ struct EventsView: View {
         ) {
 
             ResidentEventsIntroCard()
+            if isHoaBoardMember &&
+            hoaResidentPreviewMode {
+
+                Button {
+
+                    switchToBoardView()
+
+                } label: {
+
+                    HStack(
+                        spacing: 12
+                    ) {
+
+                        Image(
+                            systemName:
+                            "house.and.flag.fill"
+                        )
+
+                        VStack(
+                            alignment:
+                            .leading,
+                            spacing: 3
+                        ) {
+
+                            Text(
+                                "Return to HOA Board View"
+                            )
+                            .font(
+                                .headline.bold()
+                            )
+
+                            Text(
+                                "Manage \(effectiveNeighborhoodName) events"
+                            )
+                            .font(
+                                .caption
+                            )
+                            .opacity(
+                                0.78
+                            )
+                        }
+
+                        Spacer()
+
+                        Image(
+                            systemName:
+                            "arrow.left"
+                        )
+                    }
+                    .foregroundStyle(
+                        .black
+                    )
+                    .padding()
+                    .frame(
+                        maxWidth:
+                        .infinity
+                    )
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                .cyan,
+                                .mint
+                            ],
+                            startPoint:
+                            .leading,
+                            endPoint:
+                            .trailing
+                        )
+                    )
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius:
+                            18
+                        )
+                    )
+                }
+                .buttonStyle(
+                    .plain
+                )
+            }
 
             EventsCalendarCard(
                 events:
@@ -291,7 +383,82 @@ struct EventsView: View {
         ) {
 
             hoaBoardHeader
+            Button {
 
+                switchToResidentView()
+
+            } label: {
+
+                HStack(
+                    spacing: 12
+                ) {
+
+                    Image(
+                        systemName:
+                        "person.fill"
+                    )
+
+                    VStack(
+                        alignment:
+                        .leading,
+                        spacing: 3
+                    ) {
+
+                        Text(
+                            "View as Resident"
+                        )
+                        .font(
+                            .headline.bold()
+                        )
+
+                        Text(
+                            "See what \(effectiveNeighborhoodName) residents see"
+                        )
+                        .font(
+                            .caption
+                        )
+                        .opacity(
+                            0.78
+                        )
+                    }
+
+                    Spacer()
+
+                    Image(
+                        systemName:
+                        "arrow.right"
+                    )
+                }
+                .foregroundStyle(
+                    .white
+                )
+                .padding()
+                .frame(
+                    maxWidth:
+                    .infinity
+                )
+                .background(
+                    LinearGradient(
+                        colors: [
+                            .purple,
+                            .cyan
+                        ],
+                        startPoint:
+                        .leading,
+                        endPoint:
+                        .trailing
+                    )
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius:
+                        18
+                    )
+                )
+            }
+            .buttonStyle(
+                .plain
+            )
             hoaBoardCommunicationCard
 
             Button {
@@ -697,7 +864,7 @@ struct EventsView: View {
                         residentId:
                         residentId,
                         isHoaBoardMember:
-                        isHoaBoardMember
+                        isHoaBoardViewActive
                     )
                 }
 
@@ -762,7 +929,40 @@ struct EventsView: View {
     }
 
     // MARK: - Real Board Permission Lookup
+    @MainActor
+    private func switchToResidentView() {
 
+        hoaResidentPreviewMode =
+        true
+
+        Task {
+
+            await viewModel.loadEvents(
+                residentId:
+                residentId,
+                isHoaBoardMember:
+                false
+            )
+        }
+    }
+
+
+    @MainActor
+    private func switchToBoardView() {
+
+        hoaResidentPreviewMode =
+        false
+
+        Task {
+
+            await viewModel.loadEvents(
+                residentId:
+                residentId,
+                isHoaBoardMember:
+                true
+            )
+        }
+    }
     @MainActor
     private func refreshEventRole()
     async {
@@ -3454,7 +3654,7 @@ ObservableObject {
                 residentId:
                 residentId,
                 isHoaBoardMember:
-                isHoaBoardMember
+                isHoaBoardViewActive
             )
 
         } catch {
