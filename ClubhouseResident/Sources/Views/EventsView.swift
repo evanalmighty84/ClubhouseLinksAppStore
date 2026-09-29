@@ -13,8 +13,6 @@ struct EventsView: View {
     @AppStorage("residentDisplayAreaName")
     private var displayAreaName = ""
 
-    @AppStorage("hoaResidentPreviewMode")
-    private var hoaResidentPreviewMode = false
 
     @AppStorage("residentNeighborhoodId")
     private var residentNeighborhoodId = 0
@@ -26,6 +24,11 @@ struct EventsView: View {
     @AppStorage("residentBoardOfDirectors")
     private var residentBoardOfDirectors = false
 
+    @AppStorage("supportResidentMode")
+    private var supportResidentMode = false
+
+    @AppStorage("hoaResidentPreviewMode")
+    private var hoaResidentPreviewMode = false
 
     @StateObject
     private var viewModel = EventsViewModel()
@@ -40,8 +43,12 @@ struct EventsView: View {
     private var showingCreateEvent = false
 
     private var isSignedIn: Bool {
-        residentIsSignedUp &&
-        residentId > 0
+
+        residentId > 0 &&
+        (
+        residentIsSignedUp ||
+        supportResidentMode
+        )
     }
 
     private var isHoaBoardMember: Bool {
@@ -144,6 +151,13 @@ struct EventsView: View {
 
                 return
             }
+
+            /*
+             * A newly-selected board resident should
+             * start in HOA Board view.
+             */
+            hoaResidentPreviewMode =
+            false
 
             hasResolvedEventRole =
             false
