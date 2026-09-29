@@ -2,37 +2,26 @@ import SwiftUI
 
 // MARK: - HOA Announcement Model
 
-struct NeighborhoodAnnouncement:
-Identifiable,
-Decodable {
-
+struct NeighborhoodAnnouncement: Identifiable, Decodable {
     let id: Int
     let title: String
     let body: String
     let imageURL: String?
     let publishedAt: Date?
 
-    enum CodingKeys:
-    String,
-    CodingKey {
-
+    enum CodingKeys: String, CodingKey {
         case id
         case title
         case body
-
-        case imageURL =
-        "image_url"
-
-        case publishedAt =
-        "published_at"
+        case imageURL = "image_url"
+        case publishedAt = "published_at"
     }
 }
 
 
-// MARK: - Update Item
+// MARK: - Combined Update Item
 
-private struct NeighborhoodUpdateItem:
-Identifiable {
+private struct NeighborhoodUpdateItem: Identifiable {
 
     enum Kind {
         case event
@@ -52,53 +41,41 @@ Identifiable {
     ) -> NeighborhoodUpdateItem {
 
         NeighborhoodUpdateItem(
-            id:
-            "event-\(event.id)",
-            kind:
-            .event,
-            title:
-            event.title,
-            body:
-            event.eventDescription ??
+            id: "event-\(event.id)",
+            kind: .event,
+            title: event.title,
+            body: event.eventDescription ??
             "View details for this neighborhood event.",
-            imageURL:
-            event.imageURL,
+            imageURL: event.imageURL,
             dateText:
             "\(event.formattedDate) • \(event.formattedTime)",
-            statusText:
-            event.statusText
+            statusText: event.statusText
         )
     }
 
     static func from(
-    announcement:
-    NeighborhoodAnnouncement
+    announcement: NeighborhoodAnnouncement
     ) -> NeighborhoodUpdateItem {
 
         NeighborhoodUpdateItem(
-            id:
-            "announcement-\(announcement.id)",
-            kind:
-            .announcement,
-            title:
-            announcement.title,
-            body:
-            announcement.body,
-            imageURL:
-            announcement.imageURL,
-            dateText:
-            announcement.publishedAt.map {
-                announcementDateFormatter
-                .string(from: $0)
+            id: "announcement-\(announcement.id)",
+            kind: .announcement,
+            title: announcement.title,
+            body: announcement.body,
+            imageURL: announcement.imageURL,
+            dateText: announcement.publishedAt.map {
+                announcementDateFormatter.string(
+                    from: $0
+                )
             },
-            statusText:
-            nil
+            statusText: nil
         )
     }
 }
 
 
-// MARK: - Carousel
+// MARK: - Neighborhood Updates Carousel
+
 struct NeighborhoodUpdatesCarousel: View {
 
     let residentId: Int
@@ -106,17 +83,15 @@ struct NeighborhoodUpdatesCarousel: View {
 
     @Binding
     var showingAccountSettings: Bool
+
     @AppStorage("residentSelectedTab")
-    private var selectedTab =
-    "home"
+    private var selectedTab = "home"
 
     @StateObject
     private var viewModel =
     NeighborhoodUpdatesViewModel()
 
-    private var cleanNeighborhoodName:
-    String {
-
+    private var cleanNeighborhoodName: String {
         let clean =
         neighborhoodName
         .trimmingCharacters(
@@ -132,187 +107,188 @@ struct NeighborhoodUpdatesCarousel: View {
         return clean
     }
 
-    var body:
-    some View {
+    var body: some View {
 
         VStack(
-            alignment:
-            .leading,
-            spacing:
-            12
+            alignment: .leading,
+            spacing: 14
         ) {
 
-            HStack(spacing: 12) {
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-
-                    Label(
-                        "NEIGHBORHOOD UPDATES",
-                        systemImage: "megaphone.fill"
-                    )
-                    .font(.caption.bold())
-                    .tracking(1.1)
-                    .foregroundStyle(.cyan)
-
-                    Text(cleanNeighborhoodName)
-                    .font(.title2.bold())
-                    .foregroundStyle(.white)
-                }
-
-                Spacer()
-
-                Button {
-                    showingAccountSettings = true
-                } label: {
-
-                    VStack(spacing: 4) {
-
-                        Image(
-                            systemName:
-                            "slider.horizontal.3"
-                        )
-                        .font(.system(
-                            size: 20,
-                            weight: .semibold
-                        ))
-
-                        Text("Account")
-                        .font(.caption2.bold())
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                .cyan.opacity(0.30),
-                                .purple.opacity(0.45)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .clipShape(
-                        RoundedRectangle(
-                            cornerRadius: 14
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(
-                            cornerRadius: 14
-                        )
-                        .stroke(
-                            .cyan.opacity(0.65),
-                            lineWidth: 1
-                        )
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-
-                Image(
-                    systemName:
-                    "megaphone.fill"
-                )
-                .font(
-                    .title2
-                )
-                .foregroundStyle(
-                    .orange
-                )
-            }
-
+            updatesHeader
 
             if viewModel.isLoading &&
             viewModel.items.isEmpty {
 
                 loadingCard
 
-            } else if
-            viewModel.items.isEmpty {
+            } else if viewModel.items.isEmpty {
 
                 emptyCard
 
             } else {
 
-                TabView {
-
-                    ForEach(
-                        viewModel.items
-                    ) { item in
-
-                        updateCard(
-                            item
-                        )
-                        .padding(
-                            .horizontal,
-                            2
-                        )
-                    }
-                }
-                .frame(
-                    height:
-                    235
-                )
-                .tabViewStyle(
-                    .page(
-                        indexDisplayMode:
-                        .automatic
-                    )
-                )
+                updatesCarousel
             }
         }
-        .padding(
-            18
-        )
+        .padding(18)
         .background(
             LinearGradient(
                 colors: [
-                    .cyan.opacity(
-                        0.10
-                    ),
-                    .purple.opacity(
-                        0.18
-                    )
+                    .cyan.opacity(0.10),
+                    .purple.opacity(0.18)
                 ],
-                startPoint:
-                .topLeading,
-                endPoint:
-                .bottomTrailing
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
         )
         .clipShape(
             RoundedRectangle(
-                cornerRadius:
-                26
+                cornerRadius: 26
             )
         )
         .overlay(
             RoundedRectangle(
-                cornerRadius:
-                26
+                cornerRadius: 26
             )
             .stroke(
-                .cyan.opacity(
-                    0.45
-                ),
-                lineWidth:
-                1
+                .cyan.opacity(0.45),
+                lineWidth: 1
             )
         )
-        .task(
-            id:
-            residentId
-        ) {
+        .shadow(
+            color: .cyan.opacity(0.12),
+            radius: 10
+        )
+        .task(id: residentId) {
 
             await viewModel.load(
-                residentId:
-                residentId
+                residentId: residentId
             )
         }
+    }
+
+
+    // MARK: - Header
+
+    private var updatesHeader: some View {
+
+        HStack(
+            alignment: .center,
+            spacing: 12
+        ) {
+
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
+
+                Label(
+                    "NEIGHBORHOOD UPDATES",
+                    systemImage:
+                    "megaphone.fill"
+                )
+                .font(.caption.bold())
+                .tracking(1.1)
+                .foregroundStyle(.cyan)
+
+                Text(
+                    cleanNeighborhoodName
+                )
+                .font(.title2.bold())
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button {
+
+                showingAccountSettings =
+                true
+
+            } label: {
+
+                VStack(spacing: 4) {
+
+                    Image(
+                        systemName:
+                        "slider.horizontal.3"
+                    )
+                    .font(
+                        .system(
+                            size: 20,
+                            weight: .semibold
+                        )
+                    )
+
+                    Text("Account")
+                    .font(.caption2.bold())
+                }
+                .foregroundStyle(.white)
+                .padding(
+                    .horizontal,
+                    12
+                )
+                .padding(
+                    .vertical,
+                    9
+                )
+                .background(
+                    LinearGradient(
+                        colors: [
+                            .cyan.opacity(0.30),
+                            .purple.opacity(0.45)
+                        ],
+                        startPoint:
+                        .topLeading,
+                        endPoint:
+                        .bottomTrailing
+                    )
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 14
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(
+                        cornerRadius: 14
+                    )
+                    .stroke(
+                        .cyan.opacity(0.65),
+                        lineWidth: 1
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+
+    // MARK: - Carousel
+
+    private var updatesCarousel: some View {
+
+        TabView {
+
+            ForEach(
+                viewModel.items
+            ) { item in
+
+                updateCard(item)
+                .padding(
+                    .horizontal,
+                    2
+                )
+            }
+        }
+        .frame(height: 235)
+        .tabViewStyle(
+            PageTabViewStyle(
+                indexDisplayMode:
+                .automatic
+            )
+        )
     }
 
 
@@ -320,8 +296,7 @@ struct NeighborhoodUpdatesCarousel: View {
 
     @ViewBuilder
     private func updateCard(
-    _ item:
-    NeighborhoodUpdateItem
+    _ item: NeighborhoodUpdateItem
     ) -> some View {
 
         Button {
@@ -330,44 +305,34 @@ struct NeighborhoodUpdatesCarousel: View {
              * Events open the existing
              * Events tab.
              *
-             * Announcements remain on the
-             * home feed for now.
+             * Announcements remain visible
+             * directly in this carousel.
              */
-            if item.kind ==
-            .event {
-
-                selectedTab =
-                "events"
+            if item.kind == .event {
+                selectedTab = "events"
             }
 
         } label: {
 
             VStack(
-                alignment:
-                .leading,
-                spacing:
-                12
+                alignment: .leading,
+                spacing: 12
             ) {
 
                 HStack {
 
                     Label(
-                        item.kind ==
-                        .event
+                        item.kind == .event
                         ? "EVENT"
                         : "ANNOUNCEMENT",
                         systemImage:
-                        item.kind ==
-                        .event
+                        item.kind == .event
                         ? "calendar"
                         : "megaphone.fill"
                     )
-                    .font(
-                        .caption.bold()
-                    )
+                    .font(.caption.bold())
                     .foregroundStyle(
-                        item.kind ==
-                        .event
+                        item.kind == .event
                         ? .cyan
                         : .orange
                     )
@@ -378,26 +343,21 @@ struct NeighborhoodUpdatesCarousel: View {
                     item.statusText,
                     !status.isEmpty {
 
-                        Text(
-                            status
-                        )
+                        Text(status)
                         .font(
                             .caption2.bold()
                         )
                         .foregroundStyle(
                             .white.opacity(
-                                0.78
+                                0.75
                             )
                         )
                     }
                 }
 
-
                 HStack(
-                    alignment:
-                    .top,
-                    spacing:
-                    12
+                    alignment: .top,
+                    spacing: 12
                 ) {
 
                     if let imageURL =
@@ -405,105 +365,107 @@ struct NeighborhoodUpdatesCarousel: View {
                     !imageURL.isEmpty,
                     let url =
                     URL(
-                        string:
-                        imageURL
+                        string: imageURL
                     ) {
 
                         AsyncImage(
-                            url:
-                            url
-                        ) { image in
+                            url: url
+                        ) { phase in
 
-                            image
-                            .resizable()
-                            .scaledToFill()
+                            switch phase {
 
-                        } placeholder: {
+                            case .empty:
 
-                            ZStack {
-
-                                RoundedRectangle(
-                                    cornerRadius:
-                                    14
-                                )
-                                .fill(
-                                    .black.opacity(
-                                        0.24
+                                ZStack {
+                                    RoundedRectangle(
+                                        cornerRadius: 14
                                     )
-                                )
+                                    .fill(
+                                        .black.opacity(
+                                            0.24
+                                        )
+                                    )
 
-                                ProgressView()
-                                .tint(
-                                    .cyan
-                                )
+                                    ProgressView()
+                                    .tint(.cyan)
+                                }
+
+                            case .success(
+                            let image
+                            ):
+
+                                image
+                                .resizable()
+                                .scaledToFill()
+
+                            case .failure:
+
+                                ZStack {
+                                    RoundedRectangle(
+                                        cornerRadius: 14
+                                    )
+                                    .fill(
+                                        .black.opacity(
+                                            0.24
+                                        )
+                                    )
+
+                                    Image(
+                                        systemName:
+                                        "photo"
+                                    )
+                                    .foregroundStyle(
+                                        .white.opacity(
+                                            0.45
+                                        )
+                                    )
+                                }
+
+                            @unknown default:
+
+                                EmptyView()
                             }
                         }
                         .frame(
-                            width:
-                            95,
-                            height:
-                            105
+                            width: 95,
+                            height: 105
                         )
                         .clipShape(
                             RoundedRectangle(
-                                cornerRadius:
-                                14
+                                cornerRadius: 14
                             )
                         )
                     }
 
-
                     VStack(
-                        alignment:
-                        .leading,
-                        spacing:
-                        7
+                        alignment: .leading,
+                        spacing: 7
                     ) {
 
-                        Text(
-                            item.title
-                        )
-                        .font(
-                            .headline.bold()
-                        )
-                        .foregroundStyle(
-                            .white
-                        )
+                        Text(item.title)
+                        .font(.headline.bold())
+                        .foregroundStyle(.white)
                         .multilineTextAlignment(
                             .leading
                         )
-                        .lineLimit(
-                            2
-                        )
-
+                        .lineLimit(2)
 
                         if let dateText =
                         item.dateText,
                         !dateText.isEmpty {
 
-                            Text(
-                                dateText
-                            )
-                            .font(
-                                .caption.bold()
-                            )
+                            Text(dateText)
+                            .font(.caption.bold())
                             .foregroundStyle(
                                 .cyan.opacity(
-                                    0.9
+                                    0.90
                                 )
                             )
-                            .lineLimit(
-                                2
-                            )
+                            .lineLimit(2)
                         }
 
-
-                        Text(
-                            item.body
-                        )
-                        .font(
-                            .subheadline
-                        )
+                        Text(item.body)
+                        .font(.subheadline)
                         .foregroundStyle(
                             .white.opacity(
                                 0.72
@@ -512,20 +474,15 @@ struct NeighborhoodUpdatesCarousel: View {
                         .multilineTextAlignment(
                             .leading
                         )
-                        .lineLimit(
-                            3
-                        )
+                        .lineLimit(3)
                     }
 
                     Spacer(
-                        minLength:
-                        0
+                        minLength: 0
                     )
                 }
 
-
-                if item.kind ==
-                .event {
+                if item.kind == .event {
 
                     HStack {
 
@@ -536,114 +493,77 @@ struct NeighborhoodUpdatesCarousel: View {
                             systemImage:
                             "chevron.right"
                         )
-                        .font(
-                            .caption.bold()
-                        )
-                        .foregroundStyle(
-                            .cyan
-                        )
+                        .font(.caption.bold())
+                        .foregroundStyle(.cyan)
                     }
                 }
             }
-            .padding(
-                16
-            )
+            .padding(16)
             .frame(
-                maxWidth:
-                .infinity,
-                alignment:
-                .leading
+                maxWidth: .infinity,
+                alignment: .leading
             )
             .background(
-                .black.opacity(
-                    0.22
-                )
+                .black.opacity(0.22)
             )
             .clipShape(
                 RoundedRectangle(
-                    cornerRadius:
-                    20
+                    cornerRadius: 20
                 )
             )
             .overlay(
                 RoundedRectangle(
-                    cornerRadius:
-                    20
+                    cornerRadius: 20
                 )
                 .stroke(
-                    item.kind ==
-                    .event
-                    ? .cyan.opacity(
-                        0.40
-                    )
-                    : .orange.opacity(
-                        0.40
-                    ),
-                    lineWidth:
-                    1
+                    item.kind == .event
+                    ? .cyan.opacity(0.40)
+                    : .orange.opacity(0.40),
+                    lineWidth: 1
                 )
             )
         }
-        .buttonStyle(
-            .plain
-        )
+        .buttonStyle(.plain)
     }
 
 
-    private var loadingCard:
-    some View {
+    // MARK: - Loading
 
-        VStack(
-            spacing:
-            12
-        ) {
+    private var loadingCard: some View {
+
+        VStack(spacing: 12) {
 
             ProgressView()
-            .tint(
-                .cyan
-            )
+            .tint(.cyan)
 
             Text(
                 "Loading neighborhood updates..."
             )
-            .font(
-                .subheadline.bold()
-            )
+            .font(.subheadline.bold())
             .foregroundStyle(
-                .white.opacity(
-                    0.72
-                )
+                .white.opacity(0.72)
             )
         }
         .frame(
-            maxWidth:
-            .infinity
+            maxWidth: .infinity
         )
-        .frame(
-            height:
-            180
-        )
+        .frame(height: 180)
         .background(
-            .black.opacity(
-                0.18
-            )
+            .black.opacity(0.18)
         )
         .clipShape(
             RoundedRectangle(
-                cornerRadius:
-                20
+                cornerRadius: 20
             )
         )
     }
 
 
-    private var emptyCard:
-    some View {
+    // MARK: - Empty State
 
-        VStack(
-            spacing:
-            10
-        ) {
+    private var emptyCard: some View {
+
+        VStack(spacing: 10) {
 
             Image(
                 systemName:
@@ -651,56 +571,38 @@ struct NeighborhoodUpdatesCarousel: View {
             )
             .font(
                 .system(
-                    size:
-                    30
+                    size: 30
                 )
             )
-            .foregroundStyle(
-                .cyan
-            )
+            .foregroundStyle(.cyan)
 
             Text(
                 "No neighborhood updates yet"
             )
-            .font(
-                .headline.bold()
-            )
-            .foregroundStyle(
-                .white
-            )
+            .font(.headline.bold())
+            .foregroundStyle(.white)
 
             Text(
                 "Events and HOA announcements will appear here."
             )
-            .font(
-                .subheadline
-            )
+            .font(.subheadline)
             .foregroundStyle(
-                .white.opacity(
-                    0.68
-                )
+                .white.opacity(0.68)
             )
             .multilineTextAlignment(
                 .center
             )
         }
         .frame(
-            maxWidth:
-            .infinity
+            maxWidth: .infinity
         )
-        .frame(
-            height:
-            180
-        )
+        .frame(height: 180)
         .background(
-            .black.opacity(
-                0.18
-            )
+            .black.opacity(0.18)
         )
         .clipShape(
             RoundedRectangle(
-                cornerRadius:
-                20
+                cornerRadius: 20
             )
         )
     }
@@ -710,8 +612,7 @@ struct NeighborhoodUpdatesCarousel: View {
 // MARK: - View Model
 
 @MainActor
-private final class
-NeighborhoodUpdatesViewModel:
+private final class NeighborhoodUpdatesViewModel:
 ObservableObject {
 
     @Published
@@ -721,34 +622,27 @@ ObservableObject {
 
     @Published
     private(set)
-    var isLoading =
-    false
+    var isLoading = false
 
     private let service =
     NeighborhoodUpdatesService()
 
     func load(
-    residentId:
-    Int
+    residentId: Int
     ) async {
 
         guard residentId > 0
         else {
 
             items = []
-
             return
         }
 
-        isLoading =
-        true
+        isLoading = true
 
         defer {
-
-            isLoading =
-            false
+            isLoading = false
         }
-
 
         var events:
         [NeighborhoodEvent] = []
@@ -757,9 +651,8 @@ ObservableObject {
         [NeighborhoodAnnouncement] = []
 
 
-        /*
-         * Events already exist in production.
-         */
+        // Existing production events endpoint.
+
         do {
 
             events =
@@ -779,13 +672,11 @@ ObservableObject {
 
 
         /*
-         * This endpoint is the next backend
-         * piece we will add.
-         *
-         * A 404 is intentionally treated as
-         * no announcements so the carousel
-         * works immediately with events.
+         * Announcements endpoint will return
+         * an empty array until we add the
+         * backend route.
          */
+
         do {
 
             announcements =
@@ -816,8 +707,7 @@ ObservableObject {
         .map {
             NeighborhoodUpdateItem
             .from(
-                event:
-                $0
+                event: $0
             )
         }
 
@@ -837,18 +727,14 @@ ObservableObject {
             )
         }
         .map {
+
             NeighborhoodUpdateItem
             .from(
-                announcement:
-                $0
+                announcement: $0
             )
         }
 
 
-        /*
-         * Alternate announcements and events
-         * so one type does not bury the other.
-         */
         items =
         interleave(
             announcements:
@@ -887,9 +773,7 @@ ObservableObject {
             announcements.count {
 
                 result.append(
-                    announcements[
-                        index
-                    ]
+                    announcements[index]
                 )
             }
 
@@ -897,17 +781,13 @@ ObservableObject {
             events.count {
 
                 result.append(
-                    events[
-                        index
-                    ]
+                    events[index]
                 )
             }
         }
 
         return Array(
-            result.prefix(
-                10
-            )
+            result.prefix(10)
         )
     }
 }
@@ -915,8 +795,7 @@ ObservableObject {
 
 // MARK: - API
 
-private struct
-NeighborhoodUpdatesService {
+private struct NeighborhoodUpdatesService {
 
     private let baseURL =
     URL(
@@ -924,9 +803,11 @@ NeighborhoodUpdatesService {
         "https://crm-function-app-5d4de511071d.herokuapp.com"
     )!
 
+
+    // MARK: Events
+
     func fetchEvents(
-    residentId:
-    Int
+    residentId: Int
     ) async throws
     -> [NeighborhoodEvent] {
 
@@ -936,21 +817,39 @@ NeighborhoodUpdatesService {
             "server/resident_function/api/residents/events/\(residentId)"
         )
 
+        var request =
+        URLRequest(
+            url: url
+        )
+
+        request.httpMethod = "GET"
+
+        request.timeoutInterval = 30
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+            "Accept"
+        )
+
+
         let (data, response) =
         try await URLSession
         .shared
         .data(
-            from:
-            url
+            for: request
         )
+
 
         guard let httpResponse =
         response
         as? HTTPURLResponse
         else {
+
             throw NeighborhoodUpdatesError
             .invalidResponse
         }
+
 
         guard (200...299)
         .contains(
@@ -965,33 +864,34 @@ NeighborhoodUpdatesService {
             )
         }
 
+
         let decoder =
         neighborhoodUpdatesDecoder()
+
 
         if let envelope =
         try? decoder
         .decode(
             HomeEventsEnvelope.self,
-            from:
-            data
+            from: data
         ) {
 
-            return envelope.events ??
-            []
+            return envelope.events ?? []
         }
+
 
         return try decoder
         .decode(
             [NeighborhoodEvent].self,
-            from:
-            data
+            from: data
         )
     }
 
 
+    // MARK: Announcements
+
     func fetchAnnouncements(
-    residentId:
-    Int
+    residentId: Int
     ) async throws
     -> [NeighborhoodAnnouncement] {
 
@@ -1001,31 +901,47 @@ NeighborhoodUpdatesService {
             "server/resident_function/api/residents/announcements/\(residentId)"
         )
 
+        var request =
+        URLRequest(
+            url: url
+        )
+
+        request.httpMethod = "GET"
+
+        request.timeoutInterval = 30
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+            "Accept"
+        )
+
+
         let (data, response) =
         try await URLSession
         .shared
         .data(
-            from:
-            url
+            for: request
         )
+
 
         guard let httpResponse =
         response
         as? HTTPURLResponse
         else {
+
             throw NeighborhoodUpdatesError
             .invalidResponse
         }
 
 
         /*
-         * Until we add the backend route,
-         * simply behave as though there are
+         * Until this route exists,
+         * a 404 simply means there are
          * no announcements.
          */
-        if httpResponse.statusCode ==
-        404 {
 
+        if httpResponse.statusCode == 404 {
             return []
         }
 
@@ -1047,12 +963,12 @@ NeighborhoodUpdatesService {
         let decoder =
         neighborhoodUpdatesDecoder()
 
+
         if let envelope =
         try? decoder
         .decode(
             HomeAnnouncementsEnvelope.self,
-            from:
-            data
+            from: data
         ) {
 
             return envelope
@@ -1060,11 +976,11 @@ NeighborhoodUpdatesService {
             []
         }
 
+
         return try decoder
         .decode(
             [NeighborhoodAnnouncement].self,
-            from:
-            data
+            from: data
         )
     }
 }
@@ -1096,8 +1012,7 @@ private func neighborhoodUpdatesDecoder()
     let decoder =
     JSONDecoder()
 
-    decoder
-    .dateDecodingStrategy =
+    decoder.dateDecodingStrategy =
     .custom {
         decoder in
 
@@ -1124,8 +1039,7 @@ private func neighborhoodUpdatesDecoder()
         if let date =
         fractionalFormatter
         .date(
-            from:
-            value
+            from: value
         ) {
 
             return date
@@ -1143,8 +1057,7 @@ private func neighborhoodUpdatesDecoder()
         if let date =
         standardFormatter
         .date(
-            from:
-            value
+            from: value
         ) {
 
             return date
@@ -1153,8 +1066,7 @@ private func neighborhoodUpdatesDecoder()
 
         throw DecodingError
         .dataCorruptedError(
-            in:
-            container,
+            in: container,
             debugDescription:
             "Invalid update date: \(value)"
         )
@@ -1163,6 +1075,8 @@ private func neighborhoodUpdatesDecoder()
     return decoder
 }
 
+
+// MARK: - Announcement Date
 
 private let announcementDateFormatter:
 DateFormatter = {
@@ -1177,6 +1091,8 @@ DateFormatter = {
 }()
 
 
+// MARK: - Error
+
 private enum NeighborhoodUpdatesError:
 LocalizedError {
 
@@ -1190,8 +1106,7 @@ LocalizedError {
 
         case .invalidResponse:
 
-            return
-            "The server returned an invalid response."
+            return "The server returned an invalid response."
 
         case .server(
         let message

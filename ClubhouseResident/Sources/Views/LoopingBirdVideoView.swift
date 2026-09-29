@@ -2,8 +2,7 @@ import SwiftUI
 import AVFoundation
 import UIKit
 
-private final class LoopingPlayerView:
-UIView {
+final class LoopingPlayerView: UIView {
 
     override static var layerClass:
     AnyClass {
