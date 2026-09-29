@@ -54,6 +54,12 @@ struct ContactView: View {
     @AppStorage("residentSelectedTab")
     private var selectedTab = "home"
 
+    @AppStorage("residentStartService")
+    private var residentStartService = ""
+
+    @AppStorage("residentStartSubService")
+    private var residentStartSubService = ""
+
     @AppStorage("supportResidentMode")
     private var supportResidentMode = false
 
@@ -2459,8 +2465,8 @@ struct ContactView: View {
     private func applyInitialVendorSelection() {
 
         /*
-         * Street Fair sent us directly here
-         * with a specific contractor.
+         * Street Fair / vendor-directory flow:
+         * a specific vendor was supplied.
          */
         if let preferredVendorId =
         preselectedVendorId,
@@ -2479,11 +2485,6 @@ struct ContactView: View {
                 for: preferredVendor
             )
 
-
-            /*
-             * Use the requested service if the
-             * vendor actually supports it.
-             */
             if let preferredService =
             preselectedService,
             !preferredService.isEmpty {
@@ -2506,11 +2507,6 @@ struct ContactView: View {
                 }
             }
 
-
-            /*
-             * Otherwise use this contractor's
-             * first service.
-             */
             if let firstService =
             vendorServices.first {
 
@@ -2525,8 +2521,32 @@ struct ContactView: View {
 
 
         /*
-         * Normal Service Requests screen:
-         * preserve the current behavior.
+         * StartServiceView flow:
+         * preserve the service the resident just chose.
+         */
+        let startService =
+        residentStartService
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        if !startService.isEmpty {
+
+            selectedService =
+            displayServiceName(
+                canonicalService(
+                    startService
+                )
+            )
+
+            selectFirstVendorForService()
+
+            return
+        }
+
+
+        /*
+         * Normal Contact / Service Request flow.
          */
         if let firstVendor =
         vendorOptions.first {
@@ -2690,11 +2710,31 @@ struct ContactView: View {
             return
         }
 
+        let cleanStartSubService =
+        residentStartSubService
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        let sameStartService =
+        canonicalService(
+            residentStartService
+        ) ==
+        canonicalService(
+            selectedService
+        )
+
         let payload =
         ResidentServiceRequestPayload(
             vendor_id: selectedVendorId,
-            service: canonicalService(selectedService),
-            sub_service: nil,
+            service: canonicalService(
+                selectedService
+            ),
+            sub_service:
+            sameStartService &&
+            !cleanStartSubService.isEmpty
+            ? cleanStartSubService
+            : nil,
             message: cleanMessage
         )
 
@@ -2721,6 +2761,10 @@ struct ContactView: View {
                     "Your request was sent to \(vendorName)."
 
                     message = ""
+
+                    residentStartService = ""
+                    residentStartSubService = ""
+
                     isSubmitting = false
                 }
 

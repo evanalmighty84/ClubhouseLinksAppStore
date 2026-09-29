@@ -5,6 +5,14 @@ import UIKit
 struct StartServiceView: View {
     @AppStorage("residentAddress") private var address = ""
     @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
+    @AppStorage("residentSelectedTab")
+    private var selectedTab = "home"
+
+    @AppStorage("residentStartService")
+    private var residentStartService = ""
+
+    @AppStorage("residentStartSubService")
+    private var residentStartSubService = ""
 
     @StateObject private var addressAutocomplete = AddressAutocomplete()
 
@@ -281,8 +289,9 @@ struct StartServiceView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18))
 
                 Button {
-                    print("Selected service:", selectedService)
-                    print("Selected sub service:", selectedSubService)
+                    residentStartService = selectedService
+                    residentStartSubService = selectedSubService
+                    selectedTab = "contact"
                 } label: {
                     Text("Continue")
                     .font(.headline)

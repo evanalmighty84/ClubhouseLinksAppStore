@@ -60,6 +60,8 @@ struct ResidentProfileView: View {
     @AppStorage("residentAddress") private var address = ""
     @AppStorage("residentNeighborhoodName") private var neighborhoodName = ""
     @AppStorage("residentDisplayAreaName") private var displayAreaName = ""
+    @AppStorage("residentNeighborhoodId")
+    private var residentNeighborhoodId = 0
     @AppStorage("supportResidentMode")
     private var supportResidentMode = false
 
@@ -539,125 +541,188 @@ struct ResidentProfileView: View {
 
         return "Area not set"
     }
+    private var isHoaResident: Bool {
+        residentNeighborhoodId > 0 &&
+        !neighborhoodName
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        .isEmpty
+    }
+
+    private var projectsTitle: String {
+        if isHoaResident {
+            return "\(profileAreaName) Projects"
+        }
+
+        return "Neighborhood Projects"
+    }
+
+    private var projectsSubtitle: String {
+        if isHoaResident {
+            return "See trusted home service contractors used by neighbors near you in \(profileAreaName)."
+        }
+
+        return "See trusted home service contractors used by neighbors near you."
+    }
 
     var body: some View {
         NeonBackground {
             ScrollView {
                 VStack(spacing: 14) {
 
+                    /*
+                     * Aspen's support controls stay
+                     * above the resident experience.
+                     */
                     if supportResidentMode {
                         supportModeBanner
                     }
-                    profileTopHeader
 
-                    Text("Clubhouse Links is your portal to everyday home service contractors who have been used and trusted by your neighbors.")
-                    .font(.subheadline.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.white.opacity(0.82))
-                    .padding(.horizontal, 12)
-                    FlyingBirdHeroView(
-                        completedProjects: completedProjects,
-                        completedProjectsLoading: completedProjectsLoading,
-                        completedProjectsError: completedProjectsError
+                    NeighborhoodUpdatesCarousel(
+                        residentId: residentId,
+                        neighborhoodName: profileAreaName
                     )
 
-                    // Neighborhood projects now appear immediately on the
-                    // front of the second card.
-                    neighborProjectsCardBack
+                    profileTopHeader
+
+                    /*
+                     * Show the resident's home directly
+                     * underneath their name.
+                     */
+                    if !address
+                    .trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                    )
+                    .isEmpty {
+
+                        AppleLookAroundCard(
+                            address: address
+                        )
+                        .frame(height: 180)
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: 22
+                            )
+                        )
+                    }
+
+                    Text(
+                        "Clubhouse Links is your portal to everyday home service contractors who have been used and trusted by your neighbors."
+                    )
+                    .font(
+                        .subheadline.weight(
+                            .semibold
+                        )
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
+                    .foregroundStyle(
+                        .white.opacity(0.82)
+                    )
+                    .padding(
+                        .horizontal,
+                        12
+                    )
+
+                    /*
+                     * HOA residents:
+                     *
+                     * Crowley Park Projects /
+                     * Cottonwood Park Projects
+                     * comes BEFORE the service/project
+                     * action area.
+                     *
+                     * Regular residents:
+                     *
+                     * Existing action area stays first,
+                     * meaning Submit a Project remains
+                     * their first major action.
+                     */
+                    if isHoaResident {
+
+                        neighborProjectsCardBack
+
+                        FlyingBirdHeroView(
+                            completedProjects:
+                            completedProjects,
+                            completedProjectsLoading:
+                            completedProjectsLoading,
+                            completedProjectsError:
+                            completedProjectsError
+                        )
+
+                    } else {
+
+                        FlyingBirdHeroView(
+                            completedProjects:
+                            completedProjects,
+                            completedProjectsLoading:
+                            completedProjectsLoading,
+                            completedProjectsError:
+                            completedProjectsError
+                        )
+
+                        neighborProjectsCardBack
+                    }
 
                     NavigationLink {
                         VendorDirectoryView()
                     } label: {
                         Text("View Vendor Directory")
                         .font(.headline)
-                        .frame(maxWidth: .infinity)
+                        .frame(
+                            maxWidth:
+                            .infinity
+                        )
                         .padding()
                         .background(
                             LinearGradient(
-                                colors: [.cyan, .purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                                colors: [
+                                    .cyan,
+                                    .purple
+                                ],
+                                startPoint:
+                                .leading,
+                                endPoint:
+                                .trailing
                             )
                         )
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
-                        .shadow(color: .cyan.opacity(0.5), radius: 12)
+                        .foregroundStyle(
+                            .white
+                        )
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: 18
+                            )
+                        )
+                        .shadow(
+                            color:
+                            .cyan.opacity(0.5),
+                            radius:
+                            12
+                        )
                     }
-
-                    NeonCard(
-                        title: "Community Updates",
-                        text: "View announcements, HOA updates, and neighborhood news for your community."
-                    )
-
-                    NeonCard(
-                        title: "Events",
-                        text: "See upcoming meetings, block parties, and neighborhood events."
-                    )
-
-                    NeonCard(
-                        title: "Submit Vendor Request",
-                        text: "Request a contractor, service provider, or local business recommendation."
-                    )
 
                     /*
-                    Button {
-                        residentIsSignedUp = false
-                    } label: {
-                        Text("Sign Out")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(.white.opacity(0.08))
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 18))
-                    }
-                    .padding(.top, 4)
-                    */
+                     * These two temporary static cards
+                     * will be replaced by the swipeable
+                     * Neighborhood Updates feed.
+                     */
 
-                    /*
-                    Button {
-                        let keysToRemove = [
-                            "residentId",
-                            "residentFirstName",
-                            "residentLastName",
-                            "residentPhone",
-                            "residentAddress",
-                            "residentApprovalStatus",
-                            "residentNeighborhoodId",
-                            "residentNeighborhoodName",
-                            "residentDisplayAreaName",
-                            "residentIsSignedUp",
-                            "residentSignupProvider",
-                            "residentAppleUserId"
-                        ]
 
-                        for key in keysToRemove {
-                            UserDefaults.standard.removeObject(forKey: key)
-                        }
+                    NeonCard(
+                        title:
+                        "Submit Vendor Request",
+                        text:
+                        "Request a contractor, service provider, or local business recommendation."
+                    )
 
-                        residentId = 0
-                        firstName = ""
-                        lastName = ""
-                        phone = ""
-                        address = ""
-                        neighborhoodName = ""
-                        displayAreaName = ""
-                        residentIsSignedUp = false
-                        residentSignupProvider = "email"
-                        residentAppleUserId = ""
-                    } label: {
-                        Text("Reset Local App Storage")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.red.opacity(0.85))
-                            .cornerRadius(16)
-                    }
-                    .padding(.horizontal)
-                    */
-
-                    Spacer(minLength: 90)
+                    Spacer(
+                        minLength:
+                        90
+                    )
                 }
                 .padding()
             }
@@ -673,18 +738,28 @@ struct ResidentProfileView: View {
         }
         .onReceive(
             NotificationCenter.default.publisher(
-                for: .completedProjectSubmitted
+                for:
+                .completedProjectSubmitted
             )
         ) { _ in
-            neighborVendorsLoaded = false
-            neighborVendors.removeAll()
+
+            neighborVendorsLoaded =
+            false
+
+            neighborVendors
+            .removeAll()
 
             loadCompletedProjects()
+
             loadNeighborVendorsIfNeeded(
-                forceRefresh: true
+                forceRefresh:
+                true
             )
         }
-        .sheet(isPresented: $showingAccountSettings) {
+        .sheet(
+            isPresented:
+            $showingAccountSettings
+        ) {
             AccountSettingsView()
         }
     }
@@ -1210,11 +1285,11 @@ struct ResidentProfileView: View {
 
     private var neighborProjectsCardBack: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Neighborhood Projects")
+            Text(projectsTitle)
             .font(.title.bold())
             .foregroundStyle(.white)
 
-            Text("See trusted home service contractors used by neighbors near you.")
+            Text(projectsSubtitle)
             .font(.subheadline)
             .foregroundStyle(.white.opacity(0.72))
             .lineSpacing(3)
