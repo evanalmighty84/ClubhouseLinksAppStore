@@ -99,13 +99,13 @@ Identifiable {
 
 
 // MARK: - Carousel
-
-struct NeighborhoodUpdatesCarousel:
-View {
+struct NeighborhoodUpdatesCarousel: View {
 
     let residentId: Int
     let neighborhoodName: String
 
+    @Binding
+    var showingAccountSettings: Bool
     @AppStorage("residentSelectedTab")
     private var selectedTab =
     "home"
@@ -142,38 +142,76 @@ View {
             12
         ) {
 
-            HStack {
+            HStack(spacing: 12) {
 
                 VStack(
-                    alignment:
-                    .leading,
-                    spacing:
-                    3
+                    alignment: .leading,
+                    spacing: 4
                 ) {
 
-                    Text(
-                        "NEIGHBORHOOD UPDATES"
+                    Label(
+                        "NEIGHBORHOOD UPDATES",
+                        systemImage: "megaphone.fill"
                     )
-                    .font(
-                        .caption.bold()
-                    )
+                    .font(.caption.bold())
                     .tracking(1.1)
-                    .foregroundStyle(
-                        .cyan
-                    )
+                    .foregroundStyle(.cyan)
 
-                    Text(
-                        cleanNeighborhoodName
-                    )
-                    .font(
-                        .title2.bold()
-                    )
-                    .foregroundStyle(
-                        .white
-                    )
+                    Text(cleanNeighborhoodName)
+                    .font(.title2.bold())
+                    .foregroundStyle(.white)
                 }
 
                 Spacer()
+
+                Button {
+                    showingAccountSettings = true
+                } label: {
+
+                    VStack(spacing: 4) {
+
+                        Image(
+                            systemName:
+                            "slider.horizontal.3"
+                        )
+                        .font(.system(
+                            size: 20,
+                            weight: .semibold
+                        ))
+
+                        Text("Account")
+                        .font(.caption2.bold())
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                .cyan.opacity(0.30),
+                                .purple.opacity(0.45)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 14
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(
+                            cornerRadius: 14
+                        )
+                        .stroke(
+                            .cyan.opacity(0.65),
+                            lineWidth: 1
+                        )
+                    )
+                }
+                .buttonStyle(.plain)
+            }
 
                 Image(
                     systemName:

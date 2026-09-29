@@ -178,20 +178,11 @@ struct ResidentProfileView: View {
 
 
     private var profileTopHeader: some View {
-        VStack(spacing: 12) {
-            Text("\(firstName) \(lastName)")
-            .font(.largeTitle.bold())
-            .foregroundStyle(.white)
-            .multilineTextAlignment(.center)
-            .padding(.top, 12)
-
-            Button {
-                showingAccountSettings = true
-            } label: {
-                accountSettingsBadge
-            }
-            .buttonStyle(.plain)
-        }
+        Text("\(firstName) \(lastName)")
+        .font(.largeTitle.bold())
+        .foregroundStyle(.white)
+        .multilineTextAlignment(.center)
+        .padding(.top, 12)
     }
 
     private var neighborProjects: [NeighborVendorProject] {
@@ -581,8 +572,12 @@ struct ResidentProfileView: View {
 
                     NeighborhoodUpdatesCarousel(
                         residentId: residentId,
-                        neighborhoodName: profileAreaName
+                        neighborhoodName: profileAreaName,
+                        showingAccountSettings:
+                        $showingAccountSettings
                     )
+
+                    profileTopHeader
 
                     profileTopHeader
 

@@ -42,6 +42,24 @@ struct RequestView: View {
 
     @State private var photoPickerResetID = UUID()
     @State private var photoLoadToken = UUID()
+    @StateObject
+    private var addressAutocomplete =
+    AddressAutocomplete()
+
+    @State
+    private var editableAddress = ""
+
+    @State
+    private var isSelectingAddress =
+    false
+
+    @State
+    private var addressSaveMessage =
+    ""
+
+    @State
+    private var addressSaveError =
+    ""
 
 
     @AppStorage("vendorCompanyName")
@@ -171,7 +189,9 @@ struct RequestView: View {
 
                     residentCard
 
-                    submitProjectCard
+                    if !cleanAddress.isEmpty {
+                        submitProjectCard
+                    }
 
                     Spacer(minLength: 120)
                 }
@@ -184,6 +204,8 @@ struct RequestView: View {
             }
         }
         .onAppear {
+            editableAddress = address
+
             loadVendorOptions()
             loadResidentLookAround()
         }
@@ -397,34 +419,78 @@ struct RequestView: View {
         )
     }
 
-    private var birdAddressFallbackCard: some View {
+    private var birdAddressFallbackCard:
+    some View {
+
         VStack(spacing: 14) {
-            FlyingBirdSpriteHeroView()
-            .frame(height: 175)
-            .padding(.top, 2)
 
             Text(fallbackCardTitle)
             .font(.title2.bold())
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
 
+            LoopingBirdVideoView(
+                resourceName:
+                "clubhouse-bird-flying",
+                fileExtension:
+                "mp4"
+            )
+            .frame(height: 205)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 18
+                )
+            )
+            .allowsHitTesting(false)
+
             fallbackCardDescription
 
+            if isSignedIn &&
+            cleanAddress.isEmpty {
+
+                projectAddressInput
+            }
+
+            if !addressSaveMessage.isEmpty {
+
+                Text(addressSaveMessage)
+                .font(.caption.bold())
+                .foregroundStyle(.green)
+                .multilineTextAlignment(.center)
+            }
+
+            if !addressSaveError.isEmpty {
+
+                Text(addressSaveError)
+                .font(.caption.bold())
+                .foregroundStyle(.orange)
+                .multilineTextAlignment(.center)
+            }
+
             if isLoadingLookAround {
+
                 HStack(spacing: 8) {
+
                     ProgressView()
                     .tint(.cyan)
 
-                    Text("Loading Apple Look Around...")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.68))
+                    Text(
+                        "Loading Apple Look Around..."
+                    )
+                    .font(
+                        .caption.weight(
+                            .semibold
+                        )
+                    )
+                    .foregroundStyle(
+                        .white.opacity(0.68)
+                    )
                 }
                 .padding(.top, 2)
             }
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .frame(minHeight: 320, alignment: .top)
         .background(
             LinearGradient(
                 colors: [
@@ -436,24 +502,31 @@ struct RequestView: View {
             )
         )
         .clipShape(
-            RoundedRectangle(cornerRadius: 22)
+            RoundedRectangle(
+                cornerRadius: 22
+            )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 22)
+            RoundedRectangle(
+                cornerRadius: 22
+            )
             .stroke(
                 LinearGradient(
                     colors: [
                         .cyan,
                         .purple
                     ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    startPoint:
+                    .topLeading,
+                    endPoint:
+                    .bottomTrailing
                 ),
                 lineWidth: 1.5
             )
         )
         .shadow(
-            color: .cyan.opacity(0.25),
+            color:
+            .cyan.opacity(0.25),
             radius: 12
         )
     }
@@ -481,8 +554,22 @@ struct RequestView: View {
                 horizontal: false,
                 vertical: true
             )
-        } else if cleanAddress.isEmpty {
-            Text("Add your address from the Home screen to display your home and neighborhood.")
+        }  else if cleanAddress.isEmpty {
+
+    Text(
+        "Add your address here to submit a new project."
+    )
+    .font(.subheadline)
+    .foregroundStyle(
+        .white.opacity(0.72)
+    )
+    .multilineTextAlignment(
+        .center
+    )
+    .fixedSize(
+        horizontal: false,
+        vertical: true
+    )
             .font(.subheadline)
             .foregroundStyle(.white.opacity(0.72))
             .multilineTextAlignment(.center)
@@ -521,7 +608,425 @@ struct RequestView: View {
             }
         }
     }
+    private var projectAddressInput:
+    some View {
 
+        VStack(spacing: 12) {
+
+            TextField(
+                "Start typing your address",
+                text: $editableAddress
+            )
+            .font(.headline)
+            .foregroundStyle(.white)
+            .padding()
+            .frame(height: 58)
+            .background(
+                .black.opacity(0.24)
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 18
+                )
+            )
+            .overlay(
+                RoundedRectangle(
+                    cornerRadius: 18
+                )
+                .stroke(
+                    .cyan.opacity(0.65),
+                    lineWidth: 1.5
+                )
+            )
+            .textInputAutocapitalization(
+                .words
+            )
+            .textContentType(
+                .fullStreetAddress
+            )
+            .autocorrectionDisabled()
+            .submitLabel(.done)
+            .onSubmit {
+                saveProjectAddress()
+            }
+            .onChange(
+                of: editableAddress
+            ) { newValue in
+
+                addressSaveMessage = ""
+                addressSaveError = ""
+
+                guard !isSelectingAddress
+                else {
+                    return
+                }
+
+                addressAutocomplete
+                .updateQuery(
+                    newValue
+                )
+            }
+
+
+            if !addressAutocomplete
+            .suggestions
+            .isEmpty {
+
+                projectAddressSuggestions
+            }
+
+
+            Button {
+                saveProjectAddress()
+            } label: {
+
+                Text("Save Address")
+                .font(.headline)
+                .frame(
+                    maxWidth:
+                    .infinity
+                )
+                .padding()
+                .background(
+                    LinearGradient(
+                        colors: [
+                            .cyan,
+                            .purple
+                        ],
+                        startPoint:
+                        .leading,
+                        endPoint:
+                        .trailing
+                    )
+                )
+                .foregroundStyle(.white)
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 18
+                    )
+                )
+            }
+        }
+    }
+    private var projectAddressSuggestions:
+    some View {
+
+        VStack(spacing: 0) {
+
+            ForEach(
+                Array(
+                    addressAutocomplete
+                    .suggestions
+                    .enumerated()
+                ),
+                id: \.offset
+            ) { index, suggestion in
+
+                Button {
+
+                    selectProjectAddress(
+                        suggestion
+                    )
+
+                } label: {
+
+                    HStack(spacing: 12) {
+
+                        Image(
+                            systemName:
+                            "mappin.and.ellipse"
+                        )
+                        .foregroundStyle(.cyan)
+
+                        VStack(
+                            alignment: .leading,
+                            spacing: 3
+                        ) {
+
+                            Text(
+                                suggestion.title
+                            )
+                            .font(.headline)
+                            .foregroundStyle(.white)
+
+                            if !suggestion
+                            .subtitle
+                            .isEmpty {
+
+                                Text(
+                                    suggestion.subtitle
+                                )
+                                .font(.caption)
+                                .foregroundStyle(
+                                    .white.opacity(
+                                        0.62
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer()
+                    }
+                    .padding()
+                    .frame(
+                        maxWidth:
+                        .infinity,
+                        alignment:
+                        .leading
+                    )
+                }
+                .buttonStyle(.plain)
+
+                if index <
+                addressAutocomplete
+                .suggestions
+                .count - 1 {
+
+                    Divider()
+                    .overlay(
+                        .white.opacity(
+                            0.12
+                        )
+                    )
+                }
+            }
+        }
+        .background(
+            .black.opacity(0.30)
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 18
+            )
+        )
+    }
+    private func selectProjectAddress(
+    _ suggestion:
+    MKLocalSearchCompletion
+    ) {
+
+        addressSaveError = ""
+        addressSaveMessage = ""
+
+        let request =
+        MKLocalSearch.Request(
+            completion:
+            suggestion
+        )
+
+        request.resultTypes =
+        .address
+
+        MKLocalSearch(
+            request: request
+        )
+        .start {
+            response,
+            error in
+
+            DispatchQueue.main.async {
+
+                if let error {
+
+                    addressSaveError =
+                    error.localizedDescription
+
+                    return
+                }
+
+                guard let mapItem =
+                response?
+                .mapItems
+                .first
+                else {
+
+                    addressSaveError =
+                    "Unable to find that address."
+
+                    return
+                }
+
+                isSelectingAddress =
+                true
+
+                editableAddress =
+                mapItem
+                .placemark
+                .title ??
+                [
+                    suggestion.title,
+                    suggestion.subtitle
+                ]
+                .filter {
+                    !$0.isEmpty
+                }
+                .joined(
+                    separator: ", "
+                )
+
+                addressAutocomplete
+                .clear()
+
+                DispatchQueue.main
+                .asyncAfter(
+                    deadline:
+                    .now() + 0.05
+                ) {
+
+                    isSelectingAddress =
+                    false
+
+                    saveProjectAddress()
+                }
+            }
+        }
+    }
+    private func saveProjectAddress() {
+
+        let clean =
+        editableAddress
+        .trimmingCharacters(
+            in:
+            .whitespacesAndNewlines
+        )
+
+        guard !clean.isEmpty
+        else {
+
+            addressSaveError =
+            "Please enter your address."
+
+            return
+        }
+
+        guard residentId > 0
+        else {
+
+            addressSaveError =
+            "Resident profile not found."
+
+            return
+        }
+
+        addressSaveMessage =
+        "Saving address..."
+
+        addressSaveError =
+        ""
+
+        let urlString =
+        "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/profile/\(residentId)/address"
+
+        guard let url =
+        URL(
+            string:
+            urlString
+        )
+        else {
+
+            addressSaveError =
+            "Invalid address update URL."
+
+            return
+        }
+
+        var request =
+        URLRequest(
+            url: url
+        )
+
+        request.httpMethod =
+        "PATCH"
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+            "Content-Type"
+        )
+
+        do {
+
+            request.httpBody =
+            try JSONSerialization
+            .data(
+                withJSONObject: [
+                    "address": clean
+                ]
+            )
+
+        } catch {
+
+            addressSaveError =
+            "Could not prepare address update."
+
+            return
+        }
+
+
+        URLSession.shared
+        .dataTask(
+            with: request
+        ) {
+            data,
+            response,
+            error in
+
+            DispatchQueue.main.async {
+
+                if let error {
+
+                    addressSaveMessage = ""
+
+                    addressSaveError =
+                    error.localizedDescription
+
+                    return
+                }
+
+
+                guard let http =
+                response
+                as? HTTPURLResponse,
+                (200...299)
+                .contains(
+                    http.statusCode
+                )
+                else {
+
+                    addressSaveMessage = ""
+
+                    addressSaveError =
+                    "Could not save your address."
+
+                    return
+                }
+
+
+                address =
+                clean
+
+                editableAddress =
+                clean
+
+                addressAutocomplete
+                .clear()
+
+                addressSaveError =
+                ""
+
+                addressSaveMessage =
+                "Address saved."
+
+                /*
+                 * Refresh both pieces that depend
+                 * on the resident's address.
+                 */
+                loadResidentLookAround()
+                loadVendorOptions()
+            }
+        }
+        .resume()
+    }
     // MARK: - Submit Project Card
 
     private var submitProjectCard: some View {
