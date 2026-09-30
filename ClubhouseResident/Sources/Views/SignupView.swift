@@ -199,6 +199,12 @@ struct SignupView: View {
 
     private var headerSection: some View {
         VStack(spacing: 10) {
+
+            // Waving Clubhouse bird
+            FlyingBirdSpriteHeroView()
+            .frame(height: 125)
+            .padding(.bottom, 4)
+
             Text("Create Your Account")
             .font(.largeTitle.bold())
             .foregroundStyle(.white)
