@@ -2434,7 +2434,27 @@ struct ContactView: View {
             )
         )
     }
+    @MainActor
+    private func sendNeighborContactRequest(
+    to neighbor: NeighborResidentSearchResult
+    ) async {
 
+        guard residentId > 0 else {
+            neighborRequestMessage =
+            "Resident profile not found."
+            return
+        }
+
+        /*
+         * Temporary placeholder.
+         *
+         * Tomorrow this will POST the selected
+         * neighbor's resident ID to the
+         * neighbor-contact-request endpoint.
+         */
+        neighborRequestMessage =
+        "Neighbor selected: \(neighbor.displayName). Contact request sending will be connected tomorrow."
+    }
 
     @MainActor
     private func searchNeighbors()
