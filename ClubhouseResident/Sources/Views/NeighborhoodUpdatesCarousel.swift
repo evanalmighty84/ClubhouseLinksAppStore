@@ -88,6 +88,9 @@ struct NeighborhoodUpdatesCarousel: View {
     private var selectedTab = "home"
 
     @StateObject
+
+    @State
+    private var selectedUpdatePage = 0
     private var viewModel =
     NeighborhoodUpdatesViewModel()
 
@@ -116,19 +119,7 @@ struct NeighborhoodUpdatesCarousel: View {
 
             updatesHeader
 
-            if viewModel.isLoading &&
-            viewModel.items.isEmpty {
-
-                loadingCard
-
-            } else if viewModel.items.isEmpty {
-
-                emptyCard
-
-            } else {
-
-                updatesCarousel
-            }
+            updatesCarousel
         }
         .padding(18)
         .background(
@@ -164,6 +155,50 @@ struct NeighborhoodUpdatesCarousel: View {
             await viewModel.load(
                 residentId: residentId
             )
+        }
+        .task(
+            id:
+            "neighborhood-intro-\(residentId)"
+        ) {
+
+            /*
+             * Every time we move to a different
+             * resident, begin with the bird
+             * announcement slide.
+             */
+            selectedUpdatePage = 0
+
+            do {
+
+                try await Task.sleep(
+                    nanoseconds:
+                    7_000_000_000
+                )
+
+            } catch {
+
+                return
+            }
+
+
+            /*
+             * Only auto-advance if the resident
+             * has not already swiped away from
+             * the intro manually.
+             */
+            guard selectedUpdatePage == 0
+            else {
+                return
+            }
+
+            withAnimation(
+                .easeInOut(
+                    duration: 0.45
+                )
+            ) {
+
+                selectedUpdatePage = 1
+            }
         }
     }
 
@@ -267,19 +302,60 @@ struct NeighborhoodUpdatesCarousel: View {
 
     // MARK: - Carousel
 
+    // MARK: - Carousel
+
     private var updatesCarousel: some View {
 
-        TabView {
+        TabView(
+            selection:
+            $selectedUpdatePage
+        ) {
 
-            ForEach(
-                viewModel.items
-            ) { item in
+            /*
+             * Slide 0 always appears first.
+             */
+            announcementIntroSlide
+            .tag(0)
 
-                updateCard(item)
-                .padding(
-                    .horizontal,
-                    2
-                )
+
+            /*
+             * Slide 1 becomes whichever state
+             * the feed is currently in:
+             *
+             * loading
+             * no updates
+             * or the first real update.
+             */
+            if viewModel.isLoading &&
+            viewModel.items.isEmpty {
+
+                loadingCard
+                .tag(1)
+
+            } else if viewModel.items.isEmpty {
+
+                emptyCard
+                .tag(1)
+
+            } else {
+
+                ForEach(
+                    Array(
+                        viewModel.items
+                        .enumerated()
+                    ),
+                    id: \.element.id
+                ) { index, item in
+
+                    updateCard(item)
+                    .padding(
+                        .horizontal,
+                        2
+                    )
+                    .tag(
+                        index + 1
+                    )
+                }
             }
         }
         .frame(height: 235)
@@ -289,6 +365,41 @@ struct NeighborhoodUpdatesCarousel: View {
                 .automatic
             )
         )
+    }
+    // MARK: - Announcement Intro Slide
+
+    private var announcementIntroSlide:
+    some View {
+
+        LoopingBirdVideoView(
+            resourceName:
+            "clubhouse_bird_announcements",
+            fileExtension:
+            "mp4"
+        )
+        .frame(
+            maxWidth:
+            .infinity
+        )
+        .frame(
+            height:
+            215
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 20
+            )
+        )
+        .overlay(
+            RoundedRectangle(
+                cornerRadius: 20
+            )
+            .stroke(
+                .cyan.opacity(0.40),
+                lineWidth: 1
+            )
+        )
+        .allowsHitTesting(false)
     }
 
 

@@ -702,6 +702,94 @@ struct ContactView: View {
             }
         }
     }
+    private var serviceRequestIntroCard:
+    some View {
+
+        VStack(
+            alignment:
+            .leading,
+            spacing:
+            16
+        ) {
+
+            LoopingBirdVideoView(
+                resourceName:
+                "clubhouse-bird-building",
+                fileExtension:
+                "mp4"
+            )
+            .frame(
+                maxWidth:
+                .infinity
+            )
+            .frame(
+                height:
+                185
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 18
+                )
+            )
+            .allowsHitTesting(false)
+
+
+            Text(
+                "Select a service, choose a vendor, and send your request directly to that vendor."
+            )
+            .font(
+                .subheadline.weight(
+                    .semibold
+                )
+            )
+            .foregroundStyle(
+                .white.opacity(0.78)
+            )
+            .lineSpacing(3)
+        }
+        .padding(18)
+        .frame(
+            maxWidth:
+            .infinity,
+            alignment:
+            .leading
+        )
+        .background(
+            LinearGradient(
+                colors: [
+                    .cyan.opacity(0.12),
+                    .purple.opacity(0.20)
+                ],
+                startPoint:
+                .topLeading,
+                endPoint:
+                .bottomTrailing
+            )
+        )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 24
+            )
+        )
+        .overlay(
+            RoundedRectangle(
+                cornerRadius: 24
+            )
+            .stroke(
+                LinearGradient(
+                    colors: [
+                        .cyan.opacity(0.85),
+                        .purple.opacity(0.85)
+                    ],
+                    startPoint:
+                    .leading,
+                    endPoint:
+                    .trailing
+                ),
+                lineWidth: 1
+            )
+        )
+    }
 
     private var residentContactView: some View {
         NeonBackground {
@@ -716,11 +804,7 @@ struct ContactView: View {
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
 
-                    NeonCard(
-                        title: "Need Help?",
-                        text:
-                        "Select a service, choose a vendor, and send your request directly to that vendor."
-                    )
+                    serviceRequestIntroCard
 
                     residentRequestsSection
 
