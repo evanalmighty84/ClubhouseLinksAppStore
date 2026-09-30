@@ -842,30 +842,34 @@ struct ContactView: View {
                     alignment: .leading,
                     spacing: 20
                 ) {
+
                     Text("Contact")
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
 
-                    NeonCard(
-                        title: "Need Help?",
-                        text:
-                        "Select a service, choose a vendor, and send your request directly to that vendor."
-                    )
+                    /*
+                     * Intro card with the
+                     * clubhouse-bird-building video
+                     * and explanation text.
+                     */
+                    serviceRequestIntroCard
 
                     /*
                      * Primary action first:
-                     * let the resident request a service.
+                     * request service from a vendor.
                      */
                     helpFormCard
 
                     /*
-                     * Then show neighbor contact requests.
+                     * Search for / contact a neighbor,
+                     * then show incoming and sent
+                     * neighbor contact requests.
                      */
                     neighborContactRequestsSection
 
                     /*
-                     * Then show previously submitted
-                     * service requests and their statuses.
+                     * Previously submitted
+                     * service requests and statuses.
                      */
                     residentRequestsSection
 
@@ -878,7 +882,9 @@ struct ContactView: View {
                     .font(.headline)
                     .foregroundStyle(.cyan)
 
-                    Spacer(minLength: 120)
+                    Spacer(
+                        minLength: 120
+                    )
                 }
                 .padding()
             }
@@ -889,10 +895,15 @@ struct ContactView: View {
         .onAppear {
             loadVendorOptions()
         }
-        .task(id: residentId) {
+        .task(
+            id: residentId
+        ) {
             await loadAllResidentRequests()
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(
+            of: scenePhase
+        ) { phase in
+
             guard phase == .active else {
                 return
             }
@@ -907,6 +918,7 @@ struct ContactView: View {
                 .residentServiceRequestStatusChanged
             )
         ) { _ in
+
             Task {
                 await loadResidentRequests()
             }
@@ -917,14 +929,21 @@ struct ContactView: View {
                 .residentServiceRequestNotificationTapped
             )
         ) { _ in
+
             Task {
                 await loadResidentRequests()
             }
         }
-        .onChange(of: selectedService) { _ in
+        .onChange(
+            of: selectedService
+        ) { _ in
+
             selectFirstVendorForService()
         }
-        .onChange(of: selectedVendorId) { _ in
+        .onChange(
+            of: selectedVendorId
+        ) { _ in
+
             syncServiceToSelectedVendor()
         }
     }
