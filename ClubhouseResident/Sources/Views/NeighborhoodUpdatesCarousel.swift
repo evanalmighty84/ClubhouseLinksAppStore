@@ -88,11 +88,11 @@ struct NeighborhoodUpdatesCarousel: View {
     private var selectedTab = "home"
 
     @StateObject
+    private var viewModel =
+    NeighborhoodUpdatesViewModel()
 
     @State
     private var selectedUpdatePage = 0
-    private var viewModel =
-    NeighborhoodUpdatesViewModel()
 
     private var cleanNeighborhoodName: String {
         let clean =
