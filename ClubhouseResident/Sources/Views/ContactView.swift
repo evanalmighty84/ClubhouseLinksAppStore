@@ -26,7 +26,32 @@ Identifiable {
     let vendor_category: String?
     let vendor_logo_url: String?
 }
+private struct NeighborResidentSearchResult:
+Decodable,
+Identifiable,
+Equatable {
 
+    let id: Int
+    let first_name: String
+    let last_name: String
+    let address: String?
+    let neighborhood_id: Int?
+
+    var displayName: String {
+        "\(first_name) \(last_name)"
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+    }
+}
+
+private struct NeighborResidentSearchResponse:
+Decodable {
+
+    let success: Bool?
+    let residents: [NeighborResidentSearchResult]?
+    let error: String?
+}
 struct ContactView: View {
 
 
@@ -99,6 +124,25 @@ struct ContactView: View {
 
     @State
     private var neighborRequestMessage = ""
+    @State
+    private var neighborSearchText = ""
+
+    @State
+    private var neighborSearchResults:
+    [NeighborResidentSearchResult] = []
+
+    @State
+    private var selectedNeighbor:
+    NeighborResidentSearchResult?
+
+    @State
+    private var neighborSearchLoading = false
+
+    @State
+    private var neighborSearchError = ""
+
+    @FocusState
+    private var neighborSearchFocused: Bool
 
     let preselectedVendorId: Int?
     let preselectedService: String?
@@ -794,23 +838,36 @@ struct ContactView: View {
     private var residentContactView: some View {
         NeonBackground {
             ScrollView {
-
                 VStack(
                     alignment: .leading,
                     spacing: 20
                 ) {
-
                     Text("Contact")
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
 
-                    serviceRequestIntroCard
+                    NeonCard(
+                        title: "Need Help?",
+                        text:
+                        "Select a service, choose a vendor, and send your request directly to that vendor."
+                    )
 
-                    residentRequestsSection
+                    /*
+                     * Primary action first:
+                     * let the resident request a service.
+                     */
+                    helpFormCard
 
+                    /*
+                     * Then show neighbor contact requests.
+                     */
                     neighborContactRequestsSection
 
-                    helpFormCard
+                    /*
+                     * Then show previously submitted
+                     * service requests and their statuses.
+                     */
+                    residentRequestsSection
 
                     Link(
                         "Call Clubhouse Links",
@@ -825,10 +882,6 @@ struct ContactView: View {
                 }
                 .padding()
             }
-            .refreshable {
-
-                await loadAllResidentRequests()
-            }
             .scrollDismissesKeyboard(
                 .interactively
             )
@@ -837,7 +890,6 @@ struct ContactView: View {
             loadVendorOptions()
         }
         .task(id: residentId) {
-
             await loadAllResidentRequests()
         }
         .onChange(of: scenePhase) { phase in
@@ -867,30 +919,6 @@ struct ContactView: View {
         ) { _ in
             Task {
                 await loadResidentRequests()
-            }
-        }
-
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for:
-                .neighborContactRequestChanged
-            )
-        ) { _ in
-
-            Task {
-                await loadNeighborContactRequests()
-            }
-        }
-
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for:
-                .neighborContactRequestNotificationTapped
-            )
-        ) { _ in
-
-            Task {
-                await loadNeighborContactRequests()
             }
         }
         .onChange(of: selectedService) { _ in
@@ -1250,19 +1278,17 @@ struct ContactView: View {
     some View {
 
         VStack(
-            alignment:
-            .leading,
-            spacing:
-            16
+            alignment: .leading,
+            spacing: 16
         ) {
+
+            // MARK: Header
 
             HStack {
 
                 VStack(
-                    alignment:
-                    .leading,
-                    spacing:
-                    4
+                    alignment: .leading,
+                    spacing: 4
                 ) {
 
                     Text(
@@ -1275,28 +1301,22 @@ struct ContactView: View {
                         .white
                     )
 
-
                     Text(
-                        "Ask neighbors about companies they have used."
+                        "Find a neighbor by name or address and ask about companies they have used."
                     )
                     .font(
                         .caption
                     )
                     .foregroundStyle(
-                        .white.opacity(
-                            0.68
-                        )
+                        .white.opacity(0.68)
                     )
                 }
 
-
                 Spacer()
-
 
                 Button {
 
                     Task {
-
                         await loadNeighborContactRequests()
                     }
 
@@ -1313,15 +1333,11 @@ struct ContactView: View {
                         .cyan
                     )
                     .frame(
-                        width:
-                        42,
-                        height:
-                        42
+                        width: 42,
+                        height: 42
                     )
                     .background(
-                        .black.opacity(
-                            0.22
-                        )
+                        .black.opacity(0.22)
                     )
                     .clipShape(
                         Circle()
@@ -1336,19 +1352,388 @@ struct ContactView: View {
             }
 
 
+            // MARK: Neighbor Search
+
+            VStack(
+                alignment: .leading,
+                spacing: 10
+            ) {
+
+                Text(
+                    "Find a Neighbor"
+                )
+                .font(
+                    .headline.bold()
+                )
+                .foregroundStyle(
+                    .cyan
+                )
+
+                HStack(
+                    spacing: 10
+                ) {
+
+                    Image(
+                        systemName:
+                        "magnifyingglass"
+                    )
+                    .foregroundStyle(
+                        .cyan
+                    )
+
+                    TextField(
+                        "Search name or address",
+                        text:
+                        $neighborSearchText
+                    )
+                    .foregroundStyle(
+                        .white
+                    )
+                    .textInputAutocapitalization(
+                        .words
+                    )
+                    .autocorrectionDisabled()
+                    .focused(
+                        $neighborSearchFocused
+                    )
+
+                    if neighborSearchLoading {
+
+                        ProgressView()
+                        .tint(.cyan)
+
+                    } else if !neighborSearchText.isEmpty {
+
+                        Button {
+
+                            neighborSearchText = ""
+                            neighborSearchResults = []
+                            selectedNeighbor = nil
+                            neighborSearchError = ""
+
+                        } label: {
+
+                            Image(
+                                systemName:
+                                "xmark.circle.fill"
+                            )
+                            .foregroundStyle(
+                                .white.opacity(0.55)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding()
+                .background(
+                    .black.opacity(0.25)
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 16
+                    )
+                )
+                .overlay {
+
+                    RoundedRectangle(
+                        cornerRadius: 16
+                    )
+                    .stroke(
+                        .cyan.opacity(0.35),
+                        lineWidth: 1
+                    )
+                }
+
+
+                // MARK: Autocomplete Results
+
+                if !neighborSearchResults.isEmpty &&
+                selectedNeighbor == nil {
+
+                    VStack(
+                        spacing: 0
+                    ) {
+
+                        ForEach(
+                            neighborSearchResults
+                        ) { neighbor in
+
+                            Button {
+
+                                selectedNeighbor =
+                                neighbor
+
+                                neighborSearchText =
+                                neighbor.displayName
+
+                                neighborSearchResults =
+                                []
+
+                                neighborSearchFocused =
+                                false
+
+                            } label: {
+
+                                HStack(
+                                    spacing: 12
+                                ) {
+
+                                    Image(
+                                        systemName:
+                                        "person.crop.circle.fill"
+                                    )
+                                    .font(
+                                        .title2
+                                    )
+                                    .foregroundStyle(
+                                        .cyan
+                                    )
+
+                                    VStack(
+                                        alignment: .leading,
+                                        spacing: 4
+                                    ) {
+
+                                        Text(
+                                            neighbor.displayName
+                                        )
+                                        .font(
+                                            .headline.bold()
+                                        )
+                                        .foregroundStyle(
+                                            .white
+                                        )
+
+                                        if let address =
+                                        neighbor.address,
+                                        !address.isEmpty {
+
+                                            Label(
+                                                address,
+                                                systemImage:
+                                                "house.fill"
+                                            )
+                                            .font(
+                                                .caption
+                                            )
+                                            .foregroundStyle(
+                                                .white.opacity(0.62)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer()
+
+                                    Image(
+                                        systemName:
+                                        "chevron.right"
+                                    )
+                                    .foregroundStyle(
+                                        .white.opacity(0.35)
+                                    )
+                                }
+                                .padding(12)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    alignment: .leading
+                                )
+                            }
+                            .buttonStyle(
+                                .plain
+                            )
+
+                            if neighbor.id !=
+                            neighborSearchResults.last?.id {
+
+                                Divider()
+                                .overlay(
+                                    .white.opacity(0.10)
+                                )
+                            }
+                        }
+                    }
+                    .background(
+                        .black.opacity(0.30)
+                    )
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 16
+                        )
+                    )
+                }
+
+
+                // MARK: Selected Neighbor
+
+                if let selectedNeighbor {
+
+                    HStack(
+                        spacing: 12
+                    ) {
+
+                        Image(
+                            systemName:
+                            "checkmark.circle.fill"
+                        )
+                        .font(
+                            .title2
+                        )
+                        .foregroundStyle(
+                            .green
+                        )
+
+                        VStack(
+                            alignment: .leading,
+                            spacing: 4
+                        ) {
+
+                            Text(
+                                selectedNeighbor.displayName
+                            )
+                            .font(
+                                .headline.bold()
+                            )
+                            .foregroundStyle(
+                                .white
+                            )
+
+                            if let address =
+                            selectedNeighbor.address,
+                            !address.isEmpty {
+
+                                Text(
+                                    address
+                                )
+                                .font(
+                                    .caption
+                                )
+                                .foregroundStyle(
+                                    .white.opacity(0.65)
+                                )
+                            }
+                        }
+
+                        Spacer()
+
+                        Button(
+                            "Change"
+                        ) {
+
+                            self.selectedNeighbor =
+                            nil
+
+                            neighborSearchText =
+                            ""
+
+                            neighborSearchFocused =
+                            true
+                        }
+                        .font(
+                            .caption.bold()
+                        )
+                        .foregroundStyle(
+                            .cyan
+                        )
+                    }
+                    .padding(12)
+                    .background(
+                        .green.opacity(0.08)
+                    )
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 16
+                        )
+                    )
+
+                    /*
+                     * Tomorrow this button can call the
+                     * neighbor-contact-request POST endpoint
+                     * using selectedNeighbor.id.
+                     */
+                    Button {
+
+                        Task {
+                            await sendNeighborContactRequest(
+                                to:
+                                selectedNeighbor
+                            )
+                        }
+
+                    } label: {
+
+                        Label(
+                            "Send Neighbor Contact Request",
+                            systemImage:
+                            "paperplane.fill"
+                        )
+                        .font(
+                            .headline.bold()
+                        )
+                        .frame(
+                            maxWidth:
+                            .infinity
+                        )
+                        .padding()
+                        .foregroundStyle(
+                            .white
+                        )
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    .cyan,
+                                    .purple
+                                ],
+                                startPoint:
+                                .leading,
+                                endPoint:
+                                .trailing
+                            )
+                        )
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: 16
+                            )
+                        )
+                    }
+                    .buttonStyle(
+                        .plain
+                    )
+                }
+
+
+                if !neighborSearchError.isEmpty {
+
+                    Text(
+                        neighborSearchError
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .orange
+                    )
+                }
+            }
+
+
+            Divider()
+            .overlay(
+                .white.opacity(0.12)
+            )
+
+
+            // MARK: Existing Request History
+
             if neighborRequestsLoading &&
             incomingNeighborRequests.isEmpty &&
             outgoingNeighborRequests.isEmpty {
 
                 HStack(
-                    spacing:
-                    10
+                    spacing: 10
                 ) {
 
                     ProgressView()
-                    .tint(
-                        .cyan
-                    )
+                    .tint(.cyan)
 
                     Text(
                         "Loading neighbor requests..."
@@ -1357,9 +1742,7 @@ struct ContactView: View {
                         .subheadline
                     )
                     .foregroundStyle(
-                        .white.opacity(
-                            0.72
-                        )
+                        .white.opacity(0.72)
                     )
                 }
                 .padding(
@@ -1373,10 +1756,8 @@ struct ContactView: View {
             outgoingNeighborRequests.isEmpty {
 
                 VStack(
-                    alignment:
-                    .leading,
-                    spacing:
-                    8
+                    alignment: .leading,
+                    spacing: 8
                 ) {
 
                     Label(
@@ -1391,7 +1772,6 @@ struct ContactView: View {
                         .orange
                     )
 
-
                     Text(
                         neighborRequestsError
                     )
@@ -1399,9 +1779,7 @@ struct ContactView: View {
                         .caption
                     )
                     .foregroundStyle(
-                        .white.opacity(
-                            0.68
-                        )
+                        .white.opacity(0.68)
                     )
                 }
 
@@ -1410,8 +1788,7 @@ struct ContactView: View {
             outgoingNeighborRequests.isEmpty {
 
                 VStack(
-                    spacing:
-                    10
+                    spacing: 10
                 ) {
 
                     Image(
@@ -1420,14 +1797,12 @@ struct ContactView: View {
                     )
                     .font(
                         .system(
-                            size:
-                            42
+                            size: 42
                         )
                     )
                     .foregroundStyle(
                         .cyan
                     )
-
 
                     Text(
                         "No neighbor requests yet"
@@ -1439,7 +1814,6 @@ struct ContactView: View {
                         .white
                     )
 
-
                     Text(
                         "Requests to speak with neighbors about local vendors will appear here."
                     )
@@ -1447,9 +1821,7 @@ struct ContactView: View {
                         .caption
                     )
                     .foregroundStyle(
-                        .white.opacity(
-                            0.68
-                        )
+                        .white.opacity(0.68)
                     )
                     .multilineTextAlignment(
                         .center
@@ -1476,16 +1848,13 @@ struct ContactView: View {
                         incomingNeighborRequests.count
                     )
 
-
                     VStack(
-                        spacing:
-                        12
+                        spacing: 12
                     ) {
 
                         ForEach(
                             sortedIncomingNeighborRequests
-                        ) {
-                            request in
+                        ) { request in
 
                             incomingNeighborRequestCard(
                                 request
@@ -1511,16 +1880,13 @@ struct ContactView: View {
                         : 8
                     )
 
-
                     VStack(
-                        spacing:
-                        12
+                        spacing: 12
                     ) {
 
                         ForEach(
-                            sortedIncomingNeighborRequests
-                        ) {
-                            request in
+                            sortedOutgoingNeighborRequests
+                        ) { request in
 
                             outgoingNeighborRequestCard(
                                 request
@@ -1544,9 +1910,7 @@ struct ContactView: View {
                 )
             }
         }
-        .padding(
-            18
-        )
+        .padding(18)
         .frame(
             maxWidth:
             .infinity
@@ -1554,12 +1918,8 @@ struct ContactView: View {
         .background(
             LinearGradient(
                 colors: [
-                    .orange.opacity(
-                        0.10
-                    ),
-                    .purple.opacity(
-                        0.24
-                    )
+                    .orange.opacity(0.10),
+                    .purple.opacity(0.24)
                 ],
                 startPoint:
                 .topLeading,
@@ -1569,23 +1929,24 @@ struct ContactView: View {
         )
         .clipShape(
             RoundedRectangle(
-                cornerRadius:
-                28
+                cornerRadius: 28
             )
         )
         .overlay {
 
             RoundedRectangle(
-                cornerRadius:
-                28
+                cornerRadius: 28
             )
             .stroke(
-                .orange.opacity(
-                    0.45
-                ),
-                lineWidth:
-                1
+                .orange.opacity(0.45),
+                lineWidth: 1
             )
+        }
+        .task(
+            id: neighborSearchText
+        ) {
+
+            await searchNeighbors()
         }
     }
     private var helpFormCard: some View {
@@ -2075,7 +2436,165 @@ struct ContactView: View {
     }
 
 
+    @MainActor
+    private func searchNeighbors()
+    async {
 
+        let query =
+        neighborSearchText
+        .trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard query.count >= 2 else {
+
+            neighborSearchResults = []
+            neighborSearchError = ""
+            neighborSearchLoading = false
+
+            return
+        }
+
+        /*
+         * Do not search again after the user
+         * has selected an autocomplete result.
+         */
+        if let selectedNeighbor,
+        query == selectedNeighbor.displayName {
+
+            return
+        }
+
+        /*
+         * Small debounce so we do not hit
+         * Heroku for every single keystroke.
+         */
+        do {
+
+            try await Task.sleep(
+                nanoseconds:
+                350_000_000
+            )
+
+        } catch {
+
+            return
+        }
+
+        guard !Task.isCancelled else {
+            return
+        }
+
+        guard residentId > 0 else {
+            return
+        }
+
+        neighborSearchLoading = true
+        neighborSearchError = ""
+
+        defer {
+
+            neighborSearchLoading = false
+        }
+
+        var components =
+        URLComponents(
+            string:
+            "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/\(residentId)/neighbors/search"
+        )
+
+        components?.queryItems = [
+            URLQueryItem(
+                name: "q",
+                value: query
+            )
+        ]
+
+        guard let url =
+        components?.url
+        else {
+
+            neighborSearchError =
+            "Invalid neighbor search URL."
+
+            return
+        }
+
+        do {
+
+            var request =
+            URLRequest(
+                url: url
+            )
+
+            request.httpMethod =
+            "GET"
+
+            request.setValue(
+                "application/json",
+                forHTTPHeaderField:
+                "Accept"
+            )
+
+            let (
+            data,
+            response
+            ) =
+            try await URLSession
+            .shared
+            .data(
+                for: request
+            )
+
+            guard let httpResponse =
+            response as? HTTPURLResponse
+            else {
+
+                neighborSearchError =
+                "Invalid response from server."
+
+                return
+            }
+
+            let decoded =
+            try JSONDecoder()
+            .decode(
+                NeighborResidentSearchResponse.self,
+                from: data
+            )
+
+            guard
+            (200...299)
+            .contains(
+                httpResponse.statusCode
+            ),
+            decoded.success == true
+            else {
+
+                neighborSearchResults = []
+
+                neighborSearchError =
+                decoded.error ??
+                "Could not search neighbors."
+
+                return
+            }
+
+            neighborSearchResults =
+            decoded.residents ?? []
+
+        } catch is CancellationError {
+
+            return
+
+        } catch {
+
+            neighborSearchResults = []
+
+            neighborSearchError =
+            error.localizedDescription
+        }
+    }
 
     @MainActor
     private func loadResidentRequests() async {

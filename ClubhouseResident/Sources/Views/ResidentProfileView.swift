@@ -570,6 +570,15 @@ struct ResidentProfileView: View {
                         supportModeBanner
                     }
 
+                    /*
+                     * Resident name appears first.
+                     */
+                    profileTopHeader
+
+                    /*
+                     * Neighborhood / HOA updates
+                     * appear directly below their name.
+                     */
                     NeighborhoodUpdatesCarousel(
                         residentId: residentId,
                         neighborhoodName: profileAreaName,
@@ -577,13 +586,9 @@ struct ResidentProfileView: View {
                         $showingAccountSettings
                     )
 
-                    profileTopHeader
-
-                    profileTopHeader
-
                     /*
                      * Show the resident's home directly
-                     * underneath their name.
+                     * underneath the updates.
                      */
                     if !address
                     .trimmingCharacters(
@@ -699,13 +704,6 @@ struct ResidentProfileView: View {
                             12
                         )
                     }
-
-                    /*
-                     * These two temporary static cards
-                     * will be replaced by the swipeable
-                     * Neighborhood Updates feed.
-                     */
-
 
                     NeonCard(
                         title:
@@ -1271,10 +1269,27 @@ struct ResidentProfileView: View {
         return "\(city), \(state)"
     }
     private var residentInfoHeader: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 14) {
+            Button {
+                showingAccountSettings = true
+            } label: {
+                accountSettingsBadge
+                .padding(.top, 8)
+            }
+            .buttonStyle(.plain)
+
             Text(profileAreaName)
             .font(.title2.bold())
             .foregroundStyle(.cyan)
+
+            Text(phone)
+            .font(.title3)
+            .foregroundStyle(.white.opacity(0.82))
+
+            Text(address)
+            .font(.title3)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(.white.opacity(0.72))
         }
     }
 

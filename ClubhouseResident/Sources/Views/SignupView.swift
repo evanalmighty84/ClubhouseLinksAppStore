@@ -87,7 +87,59 @@ MKLocalSearchCompleterDelegate {
         }
     }
 }
+private struct SignupWavingBirdView: View {
+    @State private var hasFlownIn = false
+    @State private var isWaving = false
+    @State private var isFloating = false
 
+    var body: some View {
+        Image("clubhouse_bird_wave_sprite_512")
+        .resizable()
+        .scaledToFit()
+        .frame(height: 220)
+        .rotationEffect(
+            .degrees(isWaving ? 4 : -4)
+        )
+        .offset(
+            y: hasFlownIn
+            ? (isFloating ? -8 : 8)
+            : -340
+        )
+        .opacity(hasFlownIn ? 1 : 0)
+        .onAppear {
+            withAnimation(
+                .spring(
+                    response: 0.65,
+                    dampingFraction: 0.78
+                )
+            ) {
+                hasFlownIn = true
+            }
+
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + 0.65
+            ) {
+                withAnimation(
+                    .easeInOut(duration: 0.55)
+                    .repeatForever(
+                        autoreverses: true
+                    )
+                ) {
+                    isWaving = true
+                }
+
+                withAnimation(
+                    .easeInOut(duration: 1.4)
+                    .repeatForever(
+                        autoreverses: true
+                    )
+                ) {
+                    isFloating = true
+                }
+            }
+        }
+    }
+}
 // MARK: - Signup View
 
 struct SignupView: View {
@@ -200,10 +252,9 @@ struct SignupView: View {
     private var headerSection: some View {
         VStack(spacing: 10) {
 
-            // Waving Clubhouse bird
-            FlyingBirdSpriteHeroView()
-            .frame(height: 125)
-            .padding(.bottom, 4)
+            SignupWavingBirdView()
+            .frame(height: 220)
+            .padding(.bottom, 2)
 
             Text("Create Your Account")
             .font(.largeTitle.bold())
