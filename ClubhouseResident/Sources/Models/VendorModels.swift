@@ -85,12 +85,23 @@ struct VendorServiceRequest: Codable, Identifiable {
     }
 
     var serviceDisplayName: String {
-        let cleanSubService = (sub_service ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanService = service
+        .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        return cleanSubService.isEmpty
-            ? service
-            : "\(service) • \(cleanSubService)"
+        let cleanSubService = (sub_service ?? "")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanSubService.isEmpty else {
+            return cleanService
+        }
+
+        if cleanService.lowercased() ==
+        cleanSubService.lowercased() {
+
+            return cleanService
+        }
+
+        return "\(cleanService) • \(cleanSubService)"
     }
 
     func replacingStatus(
