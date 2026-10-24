@@ -7,6 +7,23 @@ struct VendorRequestsView: View {
 
     @State private var requests: [VendorServiceRequest] = []
     @State private var newCount = 0
+    @State private var selectedFilter = "All"
+
+    private let filters = ["All", "New", "In Progress", "Completed", "Declined"]
+
+    private var filteredRequests: [VendorServiceRequest] {
+        requests.filter { request in
+            switch selectedFilter {
+            case "New": return request.status.lowercased() == "new"
+            case "In Progress":
+                return ["viewed", "accepted"].contains(request.status.lowercased())
+            case "Completed": return request.status.lowercased() == "completed"
+            case "Declined":
+                return ["declined", "cancelled"].contains(request.status.lowercased())
+            default: return true
+            }
+        }
+    }
     @State private var isLoading = false
     @State private var errorMessage = ""
     @State private var selectedRequest:
@@ -17,6 +34,7 @@ struct VendorRequestsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
+                    filterPicker
 
                     if isLoading && requests.isEmpty {
                         loadingCard
@@ -25,6 +43,10 @@ struct VendorRequestsView: View {
                         errorCard
                     } else if requests.isEmpty {
                         emptyCard
+                    } else if filteredRequests.isEmpty {
+                        Text("No \(selectedFilter.lowercased()) requests.")
+                            .foregroundStyle(.white.opacity(0.75))
+                            .vendorInboxCard()
                     } else {
                         requestList
                     }
@@ -168,9 +190,30 @@ struct VendorRequestsView: View {
         .vendorInboxCard()
     }
 
+    private var filterPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(filters, id: \.self) { filter in
+                    Button {
+                        selectedFilter = filter
+                    } label: {
+                        Text(filter)
+                            .font(.subheadline.bold())
+                            .foregroundStyle(selectedFilter == filter ? .black : .white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(selectedFilter == filter ? Color.cyan : Color.white.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
     private var requestList: some View {
         LazyVStack(spacing: 14) {
-            ForEach(requests) { request in
+            ForEach(filteredRequests) { request in
                 Button {
                     selectedRequest = request
                 } label: {
@@ -271,7 +314,7 @@ struct VendorRequestsView: View {
 
         do {
             let response =
-            try await VendorAPI.shared.fetchRequests(
+            try await VendorAPI.shared.fetchAllRequests(
                 vendorId: vendorId
             )
 
@@ -279,8 +322,8 @@ struct VendorRequestsView: View {
                 return
             }
 
-            requests = response.requests ?? []
-            newCount = response.new_count ?? 0
+            requests = response.requests
+            newCount = response.newCount
 
         } catch is CancellationError {
             // SwiftUI cancelled the task because another load started.
