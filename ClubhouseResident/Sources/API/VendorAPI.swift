@@ -66,12 +66,51 @@ final class VendorAPI {
         return decoded.vendor
     }
 
-    func fetchRequests(
+    // Fetch every page, not just the default 50 new-first results.
+    // The vendor inbox must retain viewed, accepted, and completed history.
+    func fetchAllRequests(
         vendorId: Int
+    ) async throws -> (requests: [VendorServiceRequest], newCount: Int) {
+        var all: [VendorServiceRequest] = []
+        var offset = 0
+        var newCount = 0
+        let pageSize = 100
+
+        while true {
+            try Task.checkCancellation()
+            let page = try await fetchRequests(
+                vendorId: vendorId,
+                limit: pageSize,
+                offset: offset
+            )
+            let items = page.requests ?? []
+            all.append(contentsOf: items)
+            newCount = page.new_count ?? newCount
+            offset += items.count
+            if items.isEmpty ||
+                items.count < pageSize ||
+                offset >= (page.total_count ?? Int.max) {
+                break
+            }
+        }
+        return (all, newCount)
+    }
+
+    func fetchRequests(
+        vendorId: Int,
+        limit: Int = 50,
+        offset: Int = 0
     ) async throws -> VendorRequestsResponse {
-        guard let url = URL(
+        guard var components = URLComponents(
             string: "\(baseURL)/\(vendorId)/service-requests"
         ) else {
+            throw VendorAPIError.invalidURL
+        }
+        components.queryItems = [
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "offset", value: String(offset))
+        ]
+        guard let url = components.url else {
             throw VendorAPIError.invalidURL
         }
 
