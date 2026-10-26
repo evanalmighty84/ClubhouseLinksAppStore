@@ -119,6 +119,8 @@ struct VendorServiceRequest: Codable, Identifiable {
             message: message,
             status: newStatus,
             created_at: created_at,
+            original_post_at: original_post_at,
+            posted_at_text: posted_at_text,
             viewed_at: viewedAt ?? viewed_at,
             accepted_at: accepted_at,
             completed_at: completed_at,
