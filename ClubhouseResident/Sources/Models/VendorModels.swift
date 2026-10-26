@@ -59,6 +59,8 @@ struct VendorServiceRequest: Codable, Identifiable {
     let message: String
     let status: String
     let created_at: String?
+    let original_post_at: String?
+    let posted_at_text: String?
     let viewed_at: String?
     let accepted_at: String?
     let completed_at: String?
