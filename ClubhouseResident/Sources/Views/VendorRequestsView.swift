@@ -251,11 +251,18 @@ struct VendorRequestsView: View {
                 .multilineTextAlignment(.leading)
 
             HStack {
-                if let createdAt = request.created_at {
-                    Label(
-                        Self.formattedDate(createdAt),
-                        systemImage: "clock"
-                    )
+                if let area = request.resident_display_area_name, !area.isEmpty {
+                    Label(area, systemImage: "mappin.and.ellipse")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                Spacer()
+                if let postDate = request.original_post_at, !postDate.isEmpty {
+                    Label("Posted " + Self.formattedDate(postDate), systemImage: "calendar")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
+                } else if let createdAt = request.created_at {
+                    Label("Received " + Self.formattedDate(createdAt), systemImage: "clock")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.58))
                 }
