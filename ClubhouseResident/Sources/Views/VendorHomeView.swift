@@ -355,7 +355,7 @@ struct VendorHomeView: View {
                     )
 
                     Text(
-                        "Crowley Park Board Member"
+                        "Cottonwood Creek Board Member"
                     )
                     .font(
                         .caption
@@ -1052,7 +1052,7 @@ struct VendorHomeView: View {
     async {
 
         let demoResidentId =
-        960
+        961
 
         guard vendorId > 0
         else {
@@ -1086,7 +1086,7 @@ struct VendorHomeView: View {
 
             /*
              * Register Aspen as the support device
-             * for the Crowley Park HOA demo resident.
+             * for the Cottonwood Creek HOA demo resident.
              */
             let resident =
             try await
@@ -1118,7 +1118,7 @@ struct VendorHomeView: View {
 
 
             /*
-             * Resident 960 is our Crowley Park
+             * Resident 961 is our Cottonwood Creek
              * HOA board-member demo account.
              *
              * EventsView will verify this against
