@@ -319,6 +319,26 @@ struct ResidentProfileView: View {
         .sorted()
     }
 
+    // Use a per-partner MP4 when available, otherwise the existing Clubhouse
+    // bird new-project video as an explicitly labelled sample. Keep filenames
+    // aligned with Android's res/raw assets: service_partner_<vendor-slug>.mp4.
+    private var selectedServicePartnerVideo: String? {
+        guard selectedNeighborVendor != "All Vendors" else { return nil }
+        let slug = selectedNeighborVendor
+            .lowercased()
+            .replacingOccurrences(
+                of: "[^a-z0-9]+",
+                with: "_",
+                options: .regularExpression
+            )
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        let filename = "service_partner_\\(slug)"
+        if Bundle.main.url(forResource: filename, withExtension: "mp4") != nil {
+            return filename
+        }
+        return "clubhouse-bird-newproject"
+    }
+
     private var filteredNeighborProjects: [NeighborVendorProject] {
         neighborProjects
         .filter { project in
@@ -1338,7 +1358,27 @@ struct ResidentProfileView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18))
             }
 
-            if isLoadingNeighborVendors {
+            if let videoName = selectedServicePartnerVideo {
+                VStack(alignment: .leading, spacing: 10) {
+                    LoopingBirdVideoView(
+                        resourceName: videoName,
+                        fileExtension: "mp4"
+                    )
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .id(videoName)
+
+                    Text(selectedNeighborVendor)
+                        .font(.headline.bold())
+                        .foregroundStyle(.white)
+
+                    if videoName == "clubhouse-bird-newproject" {
+                        Text("Sample Service Partner Video")
+                            .font(.caption.bold())
+                            .foregroundStyle(.cyan)
+                    }
+                }
+            } else if isLoadingNeighborVendors {
                 ProgressView()
                 .tint(.cyan)
                 .frame(maxWidth: .infinity)
