@@ -322,21 +322,17 @@ struct ResidentProfileView: View {
     // Use a per-partner MP4 when available, otherwise the existing Clubhouse
     // bird new-project video as an explicitly labelled sample. Keep filenames
     // aligned with Android's res/raw assets: service_partner_<vendor-slug>.mp4.
-    private var selectedServicePartnerVideo: String? {
-        guard selectedNeighborVendor != "All Vendors" else { return nil }
-        let slug = selectedNeighborVendor
-            .lowercased()
-            .replacingOccurrences(
-                of: "[^a-z0-9]+",
-                with: "_",
-                options: .regularExpression
-            )
-            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
-        let filename = "service_partner_\(slug)"
-        if Bundle.main.url(forResource: filename, withExtension: "mp4") != nil {
-            return filename
-        }
-        return "clubhouse-bird-newproject"
+    private var selectedServicePartnerLogoURL: URL? {
+        guard selectedNeighborVendor != "All Vendors",
+              let selected = neighborVendors.first(where: {
+                  $0.company_name == selectedNeighborVendor
+              }),
+              let logo = selected.logo_url?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !logo.isEmpty,
+              let url = URL(string: logo),
+              ["https", "http"].contains(url.scheme?.lowercased() ?? "")
+        else { return nil }
+        return url
     }
 
     private var filteredNeighborProjects: [NeighborVendorProject] {
@@ -1313,6 +1309,16 @@ struct ResidentProfileView: View {
         }
     }
 
+    private var servicePartnerBirdPlaceholder: some View {
+        LoopingBirdVideoView(
+            resourceName: "clubhouse-bird-newproject",
+            fileExtension: "mp4"
+        )
+        .frame(height: 200)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .accessibilityLabel("Clubhouse Links sample Service Partner video")
+    }
+
     private var neighborProjectsCardBack: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text(projectsTitle)
@@ -1358,25 +1364,38 @@ struct ResidentProfileView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18))
             }
 
-            if let videoName = selectedServicePartnerVideo {
+            if selectedNeighborVendor != "All Vendors" {
                 VStack(alignment: .leading, spacing: 10) {
-                    LoopingBirdVideoView(
-                        resourceName: videoName,
-                        fileExtension: "mp4"
-                    )
-                    .frame(height: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .id(videoName)
+                    if let logoURL = selectedServicePartnerLogoURL {
+                        AsyncImage(url: logoURL) { phase in
+                            switch phase {
+                            case .success(let logo):
+                                logo
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 200)
+                                    .background(.white)
+                            case .empty:
+                                ProgressView()
+                                    .tint(.cyan)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 200)
+                            case .failure:
+                                servicePartnerBirdPlaceholder
+                            @unknown default:
+                                servicePartnerBirdPlaceholder
+                            }
+                        }
+                        .frame(height: 200)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                    } else {
+                        servicePartnerBirdPlaceholder
+                    }
 
                     Text(selectedNeighborVendor)
                         .font(.headline.bold())
                         .foregroundStyle(.white)
-
-                    if videoName == "clubhouse-bird-newproject" {
-                        Text("Sample Service Partner Video")
-                            .font(.caption.bold())
-                            .foregroundStyle(.cyan)
-                    }
                 }
             } else if isLoadingNeighborVendors {
                 ProgressView()
