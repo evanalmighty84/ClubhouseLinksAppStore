@@ -9,6 +9,7 @@ struct AccountSettingsView: View {
     @AppStorage("supportResidentMode") private var supportResidentMode = false
     @AppStorage("supportResidentId") private var supportResidentId = 0
     @State private var isHoaBoardMember = false
+    @State private var liveProfileAddress: String?
     @AppStorage("residentFirstName") private var savedFirstName = ""
     @AppStorage("residentLastName") private var savedLastName = ""
     @AppStorage("residentPhone") private var savedPhone = ""
@@ -42,6 +43,11 @@ struct AccountSettingsView: View {
         viewingResident ? supportResidentId : residentId
     }
 
+    private var accountStreetAddress: String {
+        if viewingResident { return liveProfileAddress ?? "" }
+        return liveProfileAddress ?? savedAddress
+    }
+
     private var accountRoleLabel: String {
         if isVendorSettings { return "Vendor" }
         if isHoaBoardMember { return "HOA Administrator (Board)" }
@@ -49,6 +55,10 @@ struct AccountSettingsView: View {
     }
 
     private func fetchLiveAccountRole() async {
+        await MainActor.run {
+            isHoaBoardMember = false
+            liveProfileAddress = nil
+        }
         guard !isVendorSettings, activeResidentId > 0,
               let url = URL(string:
                 "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/profile/\(activeResidentId)"
@@ -59,7 +69,10 @@ struct AccountSettingsView: View {
             guard let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { return }
             let flag = payload["board_of_directors"] as? Bool ?? false
-            await MainActor.run { isHoaBoardMember = flag }
+            await MainActor.run {
+                isHoaBoardMember = flag
+                liveProfileAddress = payload["address"] as? String
+            }
         } catch {
             // Do not infer board permissions from locally cached account data.
         }
@@ -112,12 +125,12 @@ struct AccountSettingsView: View {
 
                     accountInfoCard
 
-                    if !isVendorSettings && !savedAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if !isVendorSettings && !accountStreetAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Home Street View")
                                 .font(.title2.bold())
                                 .foregroundStyle(.white)
-                            AppleLookAroundCard(address: savedAddress)
+                            AppleLookAroundCard(address: accountStreetAddress)
                             Text("Apple Maps Look Around · Nearest available street scene.")
                                 .font(.caption)
                                 .foregroundStyle(.white.opacity(0.65))
