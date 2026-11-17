@@ -4,6 +4,11 @@ struct AccountSettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @AppStorage("residentId") private var residentId = 0
+    @AppStorage("vendorId") private var vendorId = 0
+    @AppStorage("accountType") private var accountType = "resident"
+    @AppStorage("supportResidentMode") private var supportResidentMode = false
+    @AppStorage("supportResidentId") private var supportResidentId = 0
+    @State private var isHoaBoardMember = false
     @AppStorage("residentFirstName") private var savedFirstName = ""
     @AppStorage("residentLastName") private var savedLastName = ""
     @AppStorage("residentPhone") private var savedPhone = ""
@@ -24,6 +29,41 @@ struct AccountSettingsView: View {
     @State private var deleteMessage = ""
     @State private var showingDeletionSuccess = false
 
+
+    private var viewingResident: Bool {
+        supportResidentMode && supportResidentId > 0
+    }
+
+    private var isVendorSettings: Bool {
+        accountType.lowercased() == "vendor" && vendorId > 0 && !viewingResident
+    }
+
+    private var activeResidentId: Int {
+        viewingResident ? supportResidentId : residentId
+    }
+
+    private var accountRoleLabel: String {
+        if isVendorSettings { return "Vendor" }
+        if isHoaBoardMember { return "HOA Administrator (Board)" }
+        return "Resident"
+    }
+
+    private func fetchLiveAccountRole() async {
+        guard !isVendorSettings, activeResidentId > 0,
+              let url = URL(string:
+                "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/profile/\(activeResidentId)"
+              )
+        else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return }
+            let flag = payload["board_of_directors"] as? Bool ?? false
+            await MainActor.run { isHoaBoardMember = flag }
+        } catch {
+            // Do not infer board permissions from locally cached account data.
+        }
+    }
 
     private var profileAreaName: String {
         let cleanNeighborhood = savedNeighborhoodName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -72,6 +112,21 @@ struct AccountSettingsView: View {
 
                     accountInfoCard
 
+                    if !isVendorSettings && !savedAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Home Street View")
+                                .font(.title2.bold())
+                                .foregroundStyle(.white)
+                            AppleLookAroundCard(address: savedAddress)
+                            Text("Apple Maps Look Around · Nearest available street scene.")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.65))
+                        }
+                        .padding(18)
+                        .background(.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
+                    }
+
                     Button {
                         saveLocalProfile()
                     } label: {
@@ -105,6 +160,9 @@ struct AccountSettingsView: View {
                 }
                 .padding()
             }
+        }
+        .task(id: activeResidentId) {
+            await fetchLiveAccountRole()
         }
         .onAppear {
             firstName = savedFirstName
@@ -196,7 +254,8 @@ struct AccountSettingsView: View {
             .font(.title2.bold())
             .foregroundStyle(.white)
 
-            infoRow(title: "Resident ID", value: residentId > 0 ? "\(residentId)" : "Not set")
+            infoRow(title: "Account Type", value: accountRoleLabel)
+            infoRow(title: isVendorSettings ? "Vendor ID" : "Resident ID", value: isVendorSettings ? "\(vendorId)" : (activeResidentId > 0 ? "\(activeResidentId)" : "Not set"))
             infoRow(title: "Area", value: profileAreaName)
             infoRow(title: "Signup Method", value: signupMethodLabel)
             infoRow(title: "Address", value: savedAddress.isEmpty ? "Not set" : savedAddress)
