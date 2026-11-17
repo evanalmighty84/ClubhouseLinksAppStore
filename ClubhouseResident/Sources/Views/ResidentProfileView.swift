@@ -332,7 +332,7 @@ struct ResidentProfileView: View {
                 options: .regularExpression
             )
             .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
-        let filename = "service_partner_\\(slug)"
+        let filename = "service_partner_\(slug)"
         if Bundle.main.url(forResource: filename, withExtension: "mp4") != nil {
             return filename
         }
