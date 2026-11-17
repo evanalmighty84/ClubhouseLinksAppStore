@@ -319,9 +319,8 @@ struct ResidentProfileView: View {
         .sorted()
     }
 
-    // Use a per-partner MP4 when available, otherwise the existing Clubhouse
-    // bird new-project video as an explicitly labelled sample. Keep filenames
-    // aligned with Android's res/raw assets: service_partner_<vendor-slug>.mp4.
+    // Vendor logos are stored as Cloudinary URLs in hoa_vendors.logo_url.
+    // When no valid logo is available, show the existing generic bird video.
     private var selectedServicePartnerLogoURL: URL? {
         guard selectedNeighborVendor != "All Vendors",
               let selected = neighborVendors.first(where: {
