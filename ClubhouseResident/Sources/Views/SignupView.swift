@@ -1366,22 +1366,68 @@ struct SignupView: View {
     }
 
     private func continueAsResidentAfterVerification() {
-        /*
-         * Do not change global AppStorage/session values yet.
-         *
-         * Signup is still in progress. Changing accountType here can
-         * cause the parent/root view to rebuild SignupView and send the
-         * user back to the beginning of the signup flow.
-         *
-         * accountType will be set to "resident" only after the account
-         * has actually been created successfully.
-         */
-        errorMessage = ""
-
-        goTo(
-            .address,
-            focus: .address
+        // Phone ownership was verified by the normal login step above.
+        // Check for an existing resident before routing to new-account signup.
+        // Board credentials came from that verification response; no second OTP.
+        guard !supportSignupMode,
+              let url = URL(string:
+                "https://crm-function-app-5d4de511071d.herokuapp.com/server/resident_function/api/residents/login")
+        else {
+            errorMessage = ""
+            goTo(.address, focus: .address)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(
+            withJSONObject: ["phone": normalizedPhone]
         )
+        isCheckingVerification = true
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isCheckingVerification = false
+                if let error {
+                    errorMessage = error.localizedDescription
+                    return
+                }
+                guard let response = response as? HTTPURLResponse else {
+                    errorMessage = "Unable to look up resident account."
+                    return
+                }
+                if response.statusCode == 404 {
+                    errorMessage = ""
+                    goTo(.address, focus: .address)
+                    return
+                }
+                guard (200...299).contains(response.statusCode),
+                      let data,
+                      let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                      let resident = json["resident"] as? [String: Any],
+                      let id = resident["id"] as? Int else {
+                    errorMessage = "Unable to open the verified resident account."
+                    return
+                }
+                residentId = id
+                savedFirstName = resident["first_name"] as? String ?? ""
+                savedLastName = resident["last_name"] as? String ?? ""
+                savedPhone = resident["phone"] as? String ?? normalizedPhone
+                savedAddress = resident["address"] as? String ?? ""
+                residentApprovalStatus = resident["approval_status"] as? String ?? ""
+                residentNeighborhoodId = resident["neighborhood_id"] as? Int ?? 0
+                residentBoardOfDirectors = resident["board_of_directors"] as? Bool ?? false
+                residentNeighborhoodName = resident["neighborhood_name"] as? String ?? ""
+                displayAreaName = resident["display_area_name"] as? String ?? ""
+                residentIsSignedUp = true
+                accountType = "resident"
+                vendorId = 0
+                vendorCompanyName = ""
+                vendorCategory = ""
+                vendorPhone = ""
+                VendorPushRegistration.requestAuthorization()
+                dismiss()
+            }
+        }.resume()
     }
 
     // MARK: - Address Selection
