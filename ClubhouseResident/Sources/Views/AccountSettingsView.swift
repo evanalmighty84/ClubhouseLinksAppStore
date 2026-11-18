@@ -10,6 +10,9 @@ struct AccountSettingsView: View {
     @AppStorage("supportResidentId") private var supportResidentId = 0
     @State private var isHoaBoardMember = false
     @State private var liveProfileAddress: String?
+    @State private var savedHouseImageURL: URL?
+    @State private var savedHouseImageSource = ""
+    @State private var houseImagePreparing = false
     @AppStorage("residentFirstName") private var savedFirstName = ""
     @AppStorage("residentLastName") private var savedLastName = ""
     @AppStorage("residentPhone") private var savedPhone = ""
@@ -54,10 +57,15 @@ struct AccountSettingsView: View {
         return "Resident"
     }
 
-    private func fetchLiveAccountRole() async {
-        await MainActor.run {
-            isHoaBoardMember = false
-            liveProfileAddress = nil
+    private func fetchLiveAccountRole(reset: Bool = true) async {
+        if reset {
+            await MainActor.run {
+                isHoaBoardMember = false
+                liveProfileAddress = nil
+                savedHouseImageURL = nil
+                savedHouseImageSource = ""
+                houseImagePreparing = false
+            }
         }
         guard !isVendorSettings, activeResidentId > 0,
               let url = URL(string:
@@ -69,9 +77,31 @@ struct AccountSettingsView: View {
             guard let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { return }
             let flag = payload["board_of_directors"] as? Bool ?? false
+            let liveAddress = payload["address"] as? String ?? ""
+            let imageAddress = payload["house_image_address"] as? String ?? ""
+            let source = payload["house_image_source"] as? String ?? ""
+            let rawURL = payload["house_image_url"] as? String ?? ""
+            let normalized = { (value: String) in
+                value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .split(whereSeparator: \.isWhitespace)
+                    .joined(separator: " ")
+                    .lowercased()
+            }
+            let validAddress = !liveAddress.isEmpty &&
+                normalized(liveAddress) == normalized(imageAddress)
+            let validURL = URL(string: rawURL).flatMap { url -> URL? in
+                url.scheme == "https" && url.host == "res.cloudinary.com" ? url : nil
+            }
+            let matchingImage = validAddress ? validURL : nil
+            let hasCoordinates = payload["latitude"] is NSNumber &&
+                payload["longitude"] is NSNumber
             await MainActor.run {
                 isHoaBoardMember = flag
-                liveProfileAddress = payload["address"] as? String
+                liveProfileAddress = liveAddress
+                savedHouseImageURL = matchingImage
+                savedHouseImageSource = matchingImage == nil ? "" : source
+                houseImagePreparing = !liveAddress.isEmpty &&
+                    hasCoordinates && matchingImage == nil
             }
         } catch {
             // Do not infer board permissions from locally cached account data.
@@ -130,10 +160,44 @@ struct AccountSettingsView: View {
                             Text("Home Street View")
                                 .font(.title2.bold())
                                 .foregroundStyle(.white)
-                            AppleLookAroundCard(address: accountStreetAddress)
-                            Text("Apple Maps Look Around · Nearest available street scene.")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.65))
+                            if let imageURL = savedHouseImageURL {
+                                if savedHouseImageSource == "test_placeholder" {
+                                    Text("TEST IMAGE — NOT AN ACTUAL HOUSE PHOTO")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.orange)
+                                }
+                                AsyncImage(url: imageURL) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image.resizable()
+                                            .scaledToFill()
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 200)
+                                            .clipped()
+                                    case .failure:
+                                        Text("Saved home image unavailable.")
+                                            .frame(maxWidth: .infinity, minHeight: 180)
+                                    default:
+                                        ProgressView("Loading your home image…")
+                                            .frame(maxWidth: .infinity, minHeight: 180)
+                                    }
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 18))
+                                Text("Saved home image · Clubhouse Links")
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.65))
+                            } else {
+                                if houseImagePreparing {
+                                    Label("Preparing your home image… It will appear automatically.",
+                                          systemImage: "arrow.triangle.2.circlepath")
+                                        .font(.caption)
+                                        .foregroundStyle(.cyan)
+                                }
+                                AppleLookAroundCard(address: accountStreetAddress)
+                                Text("Apple Maps Look Around · Nearest available live street scene.")
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.65))
+                            }
                         }
                         .padding(18)
                         .background(.white.opacity(0.08))
@@ -176,6 +240,17 @@ struct AccountSettingsView: View {
         }
         .task(id: activeResidentId) {
             await fetchLiveAccountRole()
+            guard !isVendorSettings, activeResidentId > 0,
+                  savedHouseImageURL == nil, !accountStreetAddress.isEmpty else { return }
+            // Keep the existing live MapKit view available during processing.
+            // Only refresh metadata. Stop on success, dismissal or after 3 minutes.
+            for _ in 0..<36 {
+                do { try await Task.sleep(for: .seconds(5)) }
+                catch { return }
+                if Task.isCancelled || savedHouseImageURL != nil { return }
+                await fetchLiveAccountRole(reset: false)
+                if savedHouseImageURL != nil { return }
+            }
         }
         .onAppear {
             firstName = savedFirstName
