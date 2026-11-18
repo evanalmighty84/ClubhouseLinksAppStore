@@ -94,6 +94,9 @@ struct NeighborhoodUpdatesCarousel: View {
     @State
     private var selectedUpdatePage = 0
 
+    @State
+    private var selectedAnnouncement: NeighborhoodUpdateItem?
+
     private var cleanNeighborhoodName: String {
         let clean =
         neighborhoodName
@@ -150,6 +153,43 @@ struct NeighborhoodUpdatesCarousel: View {
             color: .cyan.opacity(0.12),
             radius: 10
         )
+        .sheet(item: $selectedAnnouncement) { announcement in
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text(announcement.title)
+                            .font(.title2.bold())
+                        if let imageURL = announcement.imageURL,
+                           let url = URL(string: imageURL) {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable().scaledToFit()
+                                } else if phase.error != nil {
+                                    Text("QR image unavailable. Open the community website's Get the App section.")
+                                        .font(.caption)
+                                } else {
+                                    ProgressView()
+                                }
+                            }
+                            .frame(maxWidth: 275, maxHeight: 275)
+                            .frame(maxWidth: .infinity)
+                        }
+                        Text(announcement.body)
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(22)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .navigationTitle("Community announcement")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { selectedAnnouncement = nil }
+                    }
+                }
+            }
+        }
         .task(id: residentId) {
 
             await viewModel.load(
@@ -421,6 +461,8 @@ struct NeighborhoodUpdatesCarousel: View {
              */
             if item.kind == .event {
                 selectedTab = "events"
+            } else {
+                selectedAnnouncement = item
             }
 
         } label: {
@@ -507,7 +549,7 @@ struct NeighborhoodUpdatesCarousel: View {
 
                                 image
                                 .resizable()
-                                .scaledToFill()
+                                .scaledToFit()
 
                             case .failure:
 
