@@ -156,6 +156,7 @@ struct SignupView: View {
     @AppStorage("residentNeighborhoodName") private var residentNeighborhoodName = ""
     @AppStorage("residentIsSignedUp") private var residentIsSignedUp = false
     @AppStorage("residentBoardOfDirectors") private var residentBoardOfDirectors = false
+    @AppStorage("residentBoardAccessToken") private var residentBoardAccessToken = ""
 
     @AppStorage("accountType") private var accountType = ""
     @AppStorage("vendorId") private var vendorId = 0
@@ -1051,6 +1052,7 @@ struct SignupView: View {
         verifiedPhone = ""
         verificationCode = ""
         verificationMessage = ""
+        residentBoardAccessToken = ""
     }
 
     // MARK: - Twilio Verification Requests
@@ -1224,6 +1226,7 @@ struct SignupView: View {
                 }
 
                 verifiedPhone = normalizedPhone
+                residentBoardAccessToken = decoded?.board_access_token ?? ""
                 verificationMessage =
                 "Your mobile number has been verified."
                 errorMessage = ""
@@ -1344,6 +1347,7 @@ struct SignupView: View {
                 displayAreaName = ""
                 residentNeighborhoodName = ""
                 residentBoardOfDirectors = false
+                residentBoardAccessToken = ""
 
                 VendorPushRegistration
                 .requestAuthorization()
@@ -1750,6 +1754,7 @@ private enum SignupField: Hashable {
 struct VerificationResponse: Codable {
     let success: Bool?
     let verified: Bool?
+    let board_access_token: String?
     let status: String?
     let phone: String?
     let message: String?
