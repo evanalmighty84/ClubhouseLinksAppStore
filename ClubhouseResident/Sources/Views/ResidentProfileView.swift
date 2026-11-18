@@ -86,7 +86,7 @@ struct ResidentProfileView: View {
     @State private var completedProjectsLoading = false
     @State private var completedProjectsError = ""
 
-    @State private var selectedNeighborService = "All Services"
+    @State private var selectedNeighborService = "Nearby Neighbors"
     @State private var selectedNeighborVendor = "All Vendors"
     @State private var neighborVendors: [Vendor] = []
     @State private var isLoadingNeighborVendors = false
@@ -267,7 +267,7 @@ struct ResidentProfileView: View {
         }
 
         return [
-            "All Services"
+            "Nearby Neighbors"
         ] +
         Array(
             Set(cleaned)
@@ -285,7 +285,7 @@ struct ResidentProfileView: View {
             vendor in
 
             if selectedNeighborService ==
-            "All Services" {
+            "Nearby Neighbors" {
 
                 return true
             }
@@ -337,7 +337,7 @@ struct ResidentProfileView: View {
     private var filteredNeighborProjects: [NeighborVendorProject] {
         neighborProjects
         .filter { project in
-            let serviceMatches = selectedNeighborService == "All Services" || project.service == selectedNeighborService
+            let serviceMatches = selectedNeighborService == "Nearby Neighbors" || project.service == selectedNeighborService
             let vendorMatches = selectedNeighborVendor == "All Vendors" || project.vendorName == selectedNeighborVendor
             return serviceMatches && vendorMatches
         }
@@ -558,10 +558,10 @@ struct ResidentProfileView: View {
 
     private var projectsTitle: String {
         if isHoaResident {
-            return "\(profileAreaName) Projects"
+            return "Who My Neighbors Are Using"
         }
 
-        return "Neighborhood Projects"
+        return "Who My Neighbors Are Using"
     }
 
     private var projectsSubtitle: String {
