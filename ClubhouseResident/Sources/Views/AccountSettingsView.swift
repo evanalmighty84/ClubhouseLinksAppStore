@@ -9,6 +9,8 @@ struct AccountSettingsView: View {
     @AppStorage("supportResidentMode") private var supportResidentMode = false
     @AppStorage("supportResidentId") private var supportResidentId = 0
     @State private var isHoaBoardMember = false
+    @AppStorage("residentBoardAccessToken") private var boardAccessToken = ""
+    @State private var showingBoardDirectory = false
     @State private var liveProfileAddress: String?
     @State private var savedHouseImageURL: URL?
     @State private var savedHouseImageSource = ""
@@ -155,6 +157,37 @@ struct AccountSettingsView: View {
 
                     accountInfoCard
 
+                    if isHoaBoardMember {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("HOA Resident Management")
+                                .font(.title2.bold())
+                                .foregroundStyle(.white)
+                            Text("Manage residents for your community. Add people individually or upload and review a directory.")
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.76))
+                            if viewingResident {
+                                Text("Support Mode can preview this section but cannot use the board member's privileges.")
+                                    .font(.caption).foregroundStyle(.cyan)
+                            }
+                            Button {
+                                showingBoardDirectory = true
+                            } label: {
+                                Text("Manage HOA Residents")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(LinearGradient(
+                                        colors: [.cyan, .purple],
+                                        startPoint: .leading, endPoint: .trailing))
+                                    .foregroundStyle(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                            }
+                        }
+                        .padding(18)
+                        .background(.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
+                    }
+
                     if !isVendorSettings && !accountStreetAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Home Street View")
@@ -250,6 +283,19 @@ struct AccountSettingsView: View {
                 if Task.isCancelled || savedHouseImageURL != nil { return }
                 await fetchLiveAccountRole(reset: false)
                 if savedHouseImageURL != nil { return }
+            }
+        }
+        .sheet(isPresented: $showingBoardDirectory) {
+            NavigationStack {
+                BoardResidentDirectoryView(
+                    boardId: activeResidentId,
+                    token: viewingResident ? "" : boardAccessToken
+                )
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { showingBoardDirectory = false }
+                    }
+                }
             }
         }
         .onAppear {
@@ -511,7 +557,8 @@ struct AccountSettingsView: View {
             "residentDisplayAreaName",
             "residentIsSignedUp",
             "residentSignupProvider",
-            "residentAppleUserId"
+            "residentAppleUserId",
+            "residentBoardAccessToken"
         ]
 
         for key in keysToRemove {
